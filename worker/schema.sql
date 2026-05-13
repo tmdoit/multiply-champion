@@ -84,3 +84,14 @@ CREATE TABLE IF NOT EXISTS activity_events (
   payload_json TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+
+CREATE TABLE IF NOT EXISTS group_messages (
+  id TEXT PRIMARY KEY,
+  group_id TEXT NOT NULL,
+  account_id TEXT NOT NULL,
+  child_name TEXT NOT NULL,
+  display_name TEXT NOT NULL,
+  message TEXT NOT NULL,
+  created_at TEXT NOT NULL
+);

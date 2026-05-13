@@ -2,6 +2,7 @@ import { API_BASE_URL } from "./constants";
 import type {
   ActivityEvent,
   AuthResponse,
+  GroupChatMessage,
   GroupInvite,
   GroupMember,
   GroupSummary,
@@ -186,6 +187,25 @@ export async function fetchActivity(groupId: string, modeId: string | null, sess
     headers: createAuthHeaders(sessionToken)
   });
   return parseJson<ActivityEvent[]>(response);
+}
+
+export async function fetchGroupChat(groupId: string, sessionToken: string): Promise<GroupChatMessage[]> {
+  const response = await fetch(createUrl(`/groups/${encodeURIComponent(groupId)}/chat`), {
+    headers: createAuthHeaders(sessionToken)
+  });
+  return parseJson<GroupChatMessage[]>(response);
+}
+
+export async function sendGroupChatMessage(groupId: string, message: string, sessionToken: string): Promise<GroupChatMessage> {
+  const response = await fetch(createUrl(`/groups/${encodeURIComponent(groupId)}/chat`), {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...createAuthHeaders(sessionToken)
+    },
+    body: JSON.stringify({ message })
+  });
+  return parseJson<GroupChatMessage>(response);
 }
 
 export async function syncResult(item: PendingResultSync, sessionToken: string): Promise<boolean> {

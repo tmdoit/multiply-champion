@@ -43,6 +43,10 @@ type AcceptInvitePayload = {
   displayName: string;
 };
 
+type ChatMessagePayload = {
+  message: string;
+};
+
 type Env = {
   DB: D1Database;
 };
@@ -278,6 +282,33 @@ export default {
         await requireMembership(env.DB, groupId, account.accountId);
         const modeId = url.searchParams.get("modeId");
         return json(await listActivity(env.DB, groupId, modeId), headers);
+      }
+
+      const chatMatch = url.pathname.match(/^\/groups\/([^/]+)\/chat$/);
+      if (chatMatch && request.method === "GET") {
+        const account = await requireAuth(request, env.DB);
+        const groupId = decodeURIComponent(chatMatch[1]);
+        await requireMembership(env.DB, groupId, account.accountId);
+        return json(await listGroupChat(env.DB, groupId), headers);
+      }
+      if (chatMatch && request.method === "POST") {
+        const account = await requireAuth(request, env.DB);
+        const groupId = decodeURIComponent(chatMatch[1]);
+        const membership = await requireMembership(env.DB, groupId, account.accountId);
+        const body = (await request.json()) as ChatMessagePayload;
+        const message = body.message.trim();
+        if (message.length < 1 || message.length > 280) {
+          return json({ error: "Invalid message" }, headers, 400);
+        }
+        const createdAt = new Date().toISOString();
+        const id = crypto.randomUUID();
+        await env.DB.prepare(
+          `INSERT INTO group_messages (id, group_id, account_id, child_name, display_name, message, created_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+        )
+          .bind(id, groupId, account.accountId, account.childName, membership.displayName, message, createdAt)
+          .run();
+        return json({ id, groupId, accountId: account.accountId, childName: account.childName, displayName: membership.displayName, message, createdAt }, headers, 201);
       }
 
       const membersMatch = url.pathname.match(/^\/groups\/([^/]+)\/members$/);
@@ -646,6 +677,17 @@ async function ensureSystemData(db: D1Database): Promise<void> {
     .run();
   await db.prepare(`UPDATE groups_table SET name = 'Świat', is_system = 1 WHERE id = 'world'`).run();
   await db.prepare(
+    `CREATE TABLE IF NOT EXISTS group_messages (
+      id TEXT PRIMARY KEY,
+      group_id TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      child_name TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      message TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    )`
+  ).run();
+  await db.prepare(
     `INSERT OR IGNORE INTO modes (id, code, label, result_limit, factor_limit, sort_order, is_default)
      VALUES ('to100-table10', 'to100-table10', 'Do 100, Tabliczka 10', 100, 10, 1, 1)`
   ).run();
@@ -853,6 +895,27 @@ async function listActivity(db: D1Database, groupId: string, modeId: string | nu
     payload: safeParseJson(String(row.payload_json)),
     createdAt: String(row.created_at)
   }));
+}
+
+async function listGroupChat(db: D1Database, groupId: string) {
+  const rows = await db.prepare(
+    `SELECT id, group_id, account_id, child_name, display_name, message, created_at
+     FROM group_messages
+     WHERE group_id = ?1
+     ORDER BY created_at DESC
+     LIMIT 100`
+  )
+    .bind(groupId)
+    .all();
+  return (rows.results ?? []).map((row) => ({
+    id: String(row.id),
+    groupId: String(row.group_id),
+    accountId: String(row.account_id),
+    childName: String(row.child_name),
+    displayName: String(row.display_name),
+    message: String(row.message),
+    createdAt: String(row.created_at)
+  })).reverse();
 }
 
 async function listMembers(db: D1Database, groupId: string): Promise<GroupMemberSummary[]> {

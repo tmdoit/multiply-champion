@@ -4,6 +4,7 @@ import {
   createGroup,
   createInvite,
   fetchActivity,
+  fetchGroupChat,
   fetchGroupInvites,
   fetchGroupMembers,
   fetchGroups,
@@ -11,6 +12,7 @@ import {
   fetchLeaderboard,
   fetchMe,
   grantAdmin,
+  sendGroupChatMessage,
   hasApi,
   leaveGroup,
   loginAccount,
@@ -44,6 +46,7 @@ import type {
   CompletedGame,
   ConfirmedAccount,
   FactTask,
+  GroupChatMessage,
   GroupInvite,
   GroupMember,
   GroupSummary,
@@ -103,6 +106,8 @@ export default function App() {
   const [localBoard, setLocalBoard] = useState<LeaderboardEntry[]>(() => loadLocalLeaderboard());
   const [remoteBoard, setRemoteBoard] = useState<LeaderboardEntry[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [chatMessages, setChatMessages] = useState<GroupChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState("");
   const [members, setMembers] = useState<GroupMember[]>([]);
   const [invites, setInvites] = useState<GroupInvite[]>([]);
   const [syncStatus, setSyncStatus] = useState("Gotowe do pracy offline");
@@ -245,6 +250,17 @@ export default function App() {
   }, [account, selectedModeId, selectedGroupId]);
 
   useEffect(() => {
+    if (screen !== "chat" || !account || !selectedGroupId || !navigator.onLine || !hasApi()) {
+      return;
+    }
+    void refreshChat(account, selectedGroupId);
+    const intervalId = window.setInterval(() => {
+      void refreshChat(account, selectedGroupId);
+    }, 5000);
+    return () => window.clearInterval(intervalId);
+  }, [screen, account, selectedGroupId]);
+
+  useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("invite");
     if (token && hasApi()) {
       void fetchInvitePreview(token)
@@ -325,6 +341,49 @@ export default function App() {
         forceLogout("Sesja wygasła. Zaloguj się ponownie online.");
       } else {
         setSyncStatus("Korzystanie z danych offline");
+      }
+    }
+  }
+
+
+  async function refreshChat(activeAccount: ConfirmedAccount, groupId: string): Promise<void> {
+    if (!navigator.onLine || !hasApi()) {
+      return;
+    }
+    try {
+      const messages = await fetchGroupChat(groupId, activeAccount.sessionToken);
+      setChatMessages(messages);
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNAUTHORIZED") {
+        forceLogout("Sesja wygasła. Zaloguj się ponownie online.");
+      } else {
+        setSyncStatus("Czat jest chwilowo niedostępny offline");
+      }
+    }
+  }
+
+  async function handleSendChatMessage(): Promise<void> {
+    if (!account || !selectedGroupId) {
+      return;
+    }
+    if (!navigator.onLine || !hasApi()) {
+      setPopupMessage("Wysyłanie wiadomości wymaga internetu.");
+      return;
+    }
+    const message = chatInput.trim();
+    if (message.length < 1) {
+      setPopupMessage("Wpisz wiadomość.");
+      return;
+    }
+    try {
+      const sent = await sendGroupChatMessage(selectedGroupId, message, account.sessionToken);
+      setChatMessages((current) => [...current, sent]);
+      setChatInput("");
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNAUTHORIZED") {
+        forceLogout("Sesja wygasła. Zaloguj się ponownie online.");
+      } else {
+        setPopupMessage("Nie udało się wysłać wiadomości.");
       }
     }
   }
@@ -907,6 +966,9 @@ export default function App() {
               <button className="secondaryButton" onClick={() => setScreen("activity")}>
                 Aktywność
               </button>
+              <button className="secondaryButton" onClick={() => setScreen("chat")}>
+                Czat
+              </button>
               <button className="secondaryButton" onClick={() => { setScreen("group"); void refreshGroupManagement(); }}>
                 Grupa
               </button>
@@ -1096,6 +1158,49 @@ export default function App() {
     );
   }
 
+
+  function renderChat(): JSX.Element {
+    return (
+      <section className="screen">
+        <div className="card stack">
+          <div className="sectionTitleRow">
+            <h2>Czat</h2>
+            <button className="ghostButton small" onClick={() => setScreen("home")}>
+              Wstecz
+            </button>
+          </div>
+          <p className="subtitle">{displayGroupName(selectedGroup?.name, selectedGroup?.id)} • kanał grupy</p>
+          <div className="chatList">
+            {chatMessages.length === 0 ? (
+              <p className="statusLine">Brak wiadomości.</p>
+            ) : (
+              chatMessages.map((message) => (
+                <article className="chatMessageCard" key={message.id}>
+                  <div className="sectionTitleRow">
+                    <p className="name">{message.displayName}</p>
+                    <p className="rank">{new Date(message.createdAt).toLocaleString("pl-PL")}</p>
+                  </div>
+                  <p className="chatMessageBody">{message.message}</p>
+                </article>
+              ))
+            )}
+          </div>
+          <label className="field">
+            <span>Nowa wiadomość</span>
+            <input
+              value={chatInput}
+              onChange={(event) => setChatInput(event.target.value.slice(0, 280))}
+              placeholder="Napisz coś do grupy"
+            />
+          </label>
+          <button className="primaryButton" onClick={() => void handleSendChatMessage()}>
+            Wyślij
+          </button>
+        </div>
+      </section>
+    );
+  }
+
   function renderGroup(): JSX.Element {
     const myMembership = members.find((member) => member.accountId === account?.accountId) ?? null;
     const canManage = myMembership ? ["owner", "admin"].includes(myMembership.role) : false;
@@ -1216,6 +1321,7 @@ export default function App() {
       {screen === "results" && renderResults()}
       {screen === "leaderboard" && renderLeaderboard()}
       {screen === "activity" && renderActivity()}
+      {screen === "chat" && renderChat()}
       {screen === "group" && renderGroup()}
       {popupMessage ? (
         <div className="popupOverlay" role="dialog" aria-modal="true">

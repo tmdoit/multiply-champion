@@ -1,4 +1,4 @@
-export type Screen = "home" | "game" | "results" | "leaderboard" | "activity" | "group";
+export type Screen = "home" | "game" | "results" | "leaderboard" | "activity" | "group" | "chat";
 
 export type HostConfig = {
   taskCount: number;
@@ -76,6 +76,16 @@ export type ActivityEvent = {
   modeId: string | null;
   eventType: string;
   payload: Record<string, unknown>;
+  createdAt: string;
+};
+
+export type GroupChatMessage = {
+  id: string;
+  groupId: string;
+  accountId: string;
+  childName: string;
+  displayName: string;
+  message: string;
   createdAt: string;
 };
 
