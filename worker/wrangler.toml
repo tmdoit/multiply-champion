@@ -1,0 +1,8 @@
+name = "multiply-api"
+main = "src/index.ts"
+compatibility_date = "2026-05-13"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "multiply-db"
+database_id = "f7d69628-a8b1-44ea-8aae-bf14ac9482a4"

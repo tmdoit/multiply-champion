@@ -1,0 +1,472 @@
+:root {
+  font-family: "Trebuchet MS", "Avenir Next", sans-serif;
+  color: #16304a;
+  background:
+    radial-gradient(circle at top left, rgba(255, 219, 171, 0.95), transparent 28%),
+    radial-gradient(circle at top right, rgba(255, 155, 113, 0.65), transparent 26%),
+    linear-gradient(180deg, #fff7eb 0%, #ffe6cc 100%);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --card: rgba(255, 252, 246, 0.86);
+  --border: rgba(22, 48, 74, 0.12);
+  --accent: #ff8a5b;
+  --accent-dark: #ef6d38;
+  --text-soft: #5f6f82;
+  --success: #2ea56c;
+  --danger: #d65252;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  min-height: 100vh;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button {
+  border: none;
+  cursor: pointer;
+}
+
+input,
+select {
+  width: 100%;
+  border-radius: 18px;
+  border: 2px solid rgba(22, 48, 74, 0.12);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 0.95rem 1rem;
+  font-size: 1rem;
+  color: #16304a;
+}
+
+.appShell {
+  width: min(100%, 36rem);
+  margin: 0 auto;
+  padding: 1rem;
+}
+
+.screen {
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  gap: 1.25rem;
+  padding: 1rem 0 2rem;
+}
+
+.gameScreen {
+  align-content: start;
+}
+
+.hero h1,
+.card h2 {
+  margin: 0;
+  line-height: 1.05;
+}
+
+.hero h1 {
+  font-size: clamp(2.3rem, 6vw, 3.5rem);
+}
+
+.subtitle,
+.statusLine {
+  color: var(--text-soft);
+  margin: 0;
+}
+
+.eyebrow {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--accent-dark);
+  font-weight: 800;
+  margin: 0 0 0.5rem;
+}
+
+.card,
+.problemCard {
+  background: var(--card);
+  border: 1px solid var(--border);
+  box-shadow: 0 18px 55px rgba(81, 67, 37, 0.12);
+  backdrop-filter: blur(10px);
+  border-radius: 28px;
+  padding: 1.25rem;
+}
+
+.stack {
+  display: grid;
+  gap: 1rem;
+}
+
+.field {
+  display: grid;
+  gap: 0.45rem;
+  font-weight: 700;
+}
+
+.toggleRow,
+.sectionTitleRow,
+.hud,
+.leaderboardRow,
+.leaderboardMeta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+.buttonGrid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.primaryButton,
+.secondaryButton,
+.ghostButton,
+.key {
+  border-radius: 22px;
+  min-height: 3.6rem;
+  font-weight: 800;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+.primaryButton:hover,
+.secondaryButton:hover,
+.ghostButton:hover,
+.key:hover {
+  transform: translateY(-1px);
+}
+
+.primaryButton {
+  background: var(--accent);
+  color: white;
+}
+
+.secondaryButton {
+  background: #ffe0cb;
+  color: #8a3d18;
+}
+
+.ghostButton {
+  background: rgba(255, 255, 255, 0.72);
+  color: #16304a;
+}
+
+.ghostButton.small {
+  min-height: 2.9rem;
+  padding: 0 1rem;
+}
+
+.large {
+  min-height: 4.8rem;
+  font-size: 1.5rem;
+}
+
+.gameExitButton {
+  min-height: 3.1rem;
+}
+
+.hud {
+  font-weight: 800;
+}
+
+.hud p {
+  margin: 0;
+}
+
+.problem {
+  margin: 0;
+  font-size: clamp(3rem, 12vw, 5.6rem);
+  text-align: center;
+  font-weight: 900;
+}
+
+.answerBox {
+  margin-top: 1rem;
+  border-radius: 22px;
+  min-height: 5rem;
+  display: grid;
+  place-items: center;
+  background: white;
+  font-size: 2.4rem;
+  font-weight: 900;
+}
+
+.feedback {
+  margin-top: 1rem;
+  border-radius: 18px;
+  padding: 0.85rem 1rem;
+  text-align: center;
+  font-weight: 800;
+}
+
+.feedback.correct {
+  background: rgba(46, 165, 108, 0.12);
+  color: var(--success);
+}
+
+.feedback.wrong {
+  background: rgba(214, 82, 82, 0.12);
+  color: var(--danger);
+}
+
+.feedback.neutral {
+  background: rgba(22, 48, 74, 0.08);
+  color: var(--text-soft);
+}
+
+.keypad {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+.key {
+  background: rgba(255, 255, 255, 0.88);
+  color: #16304a;
+  font-size: 1.65rem;
+}
+
+.key.action {
+  font-size: 1.05rem;
+}
+
+.celebrate {
+  position: relative;
+  overflow: hidden;
+}
+
+.celebrate::after {
+  content: "";
+  position: absolute;
+  inset: auto -10% -35% auto;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 138, 91, 0.34), transparent 70%);
+}
+
+.recordCelebration {
+  background:
+    radial-gradient(circle at top left, rgba(255, 223, 110, 0.35), transparent 32%),
+    radial-gradient(circle at bottom right, rgba(255, 138, 91, 0.24), transparent 30%),
+    var(--card);
+}
+
+.recordHero {
+  display: grid;
+  gap: 1rem;
+  justify-items: center;
+  text-align: center;
+}
+
+.recordCopy {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.recordCopy h2 {
+  margin: 0;
+}
+
+.recordTime {
+  text-align: center;
+  font-size: 1.15rem;
+}
+
+.mascotBadge {
+  position: relative;
+  width: 9rem;
+  height: 9rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #fff4b1 0%, #ffd15c 55%, #f3a126 100%);
+  box-shadow: 0 14px 30px rgba(243, 161, 38, 0.25);
+  display: grid;
+  place-items: center;
+}
+
+.mascotFace {
+  position: relative;
+  width: 5.2rem;
+  height: 5.2rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.eye {
+  position: absolute;
+  top: 1.8rem;
+  width: 0.55rem;
+  height: 0.8rem;
+  border-radius: 999px;
+  background: #16304a;
+}
+
+.eye.left {
+  left: 1.45rem;
+}
+
+.eye.right {
+  right: 1.45rem;
+}
+
+.smile {
+  position: absolute;
+  left: 50%;
+  bottom: 1.1rem;
+  width: 1.9rem;
+  height: 1rem;
+  transform: translateX(-50%);
+  border-bottom: 0.28rem solid #16304a;
+  border-radius: 0 0 999px 999px;
+}
+
+.mascotRibbon {
+  position: absolute;
+  bottom: -1rem;
+  width: 1.4rem;
+  height: 2.3rem;
+  background: linear-gradient(180deg, #ff8a5b 0%, #ef6d38 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 72%, 50% 100%, 0 72%);
+}
+
+.mascotRibbon.left {
+  left: 1.7rem;
+  transform: rotate(8deg);
+}
+
+.mascotRibbon.right {
+  right: 1.7rem;
+  transform: rotate(-8deg);
+}
+
+.leaderboardList {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.softCard {
+  background: rgba(255, 255, 255, 0.62);
+}
+
+.memberActions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.mutedName {
+  color: #8b97a7;
+}
+
+.pendingRow {
+  opacity: 0.82;
+}
+
+.inviteLinkBox {
+  display: grid;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.inviteUrl {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #5f6f82;
+  word-break: break-all;
+}
+
+.smallUrl {
+  margin-top: 0.35rem;
+}
+
+.popupOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(22, 48, 74, 0.35);
+  display: grid;
+  place-items: center;
+  padding: 1rem;
+  z-index: 50;
+}
+
+.popupCard {
+  width: min(100%, 24rem);
+  background: rgba(255, 252, 246, 0.98);
+  border: 1px solid var(--border);
+  border-radius: 28px;
+  box-shadow: 0 18px 55px rgba(81, 67, 37, 0.18);
+  padding: 1.25rem;
+  display: grid;
+  gap: 1rem;
+  text-align: center;
+}
+
+.popupFormCard {
+  text-align: left;
+}
+
+.popupMessage {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #16304a;
+}
+
+.popupField {
+  text-align: left;
+}
+
+.popupButtonGrid {
+  margin-top: 0.25rem;
+}
+
+.leaderboardRow {
+  padding: 0.95rem 1rem;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.rank,
+.name,
+.leaderboardMeta p {
+  margin: 0;
+}
+
+.rank {
+  font-size: 0.8rem;
+  color: var(--text-soft);
+}
+
+.name {
+  font-size: 1.2rem;
+  font-weight: 800;
+}
+
+@media (max-width: 480px) {
+  .appShell {
+    padding: 0.75rem;
+  }
+
+  .buttonGrid {
+    grid-template-columns: 1fr;
+  }
+}
