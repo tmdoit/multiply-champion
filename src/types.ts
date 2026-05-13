@@ -136,6 +136,7 @@ export type CompletedGame = {
   childName: string;
   synced: boolean;
   isNewBest: boolean;
+  bestTimeMs: number;
 };
 
 export type AuthResponse = {

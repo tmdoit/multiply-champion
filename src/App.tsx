@@ -728,6 +728,7 @@ export default function App() {
       !previousBest ||
       correctAnswers > previousBest.correctAnswers ||
       (correctAnswers === previousBest.correctAnswers && totalTimeMs < previousBest.totalTimeMs);
+    const bestTimeMs = isNewBest ? totalTimeMs : previousBest?.totalTimeMs ?? totalTimeMs;
     const result: PendingResultSync = {
       id: crypto.randomUUID(),
       accountId: account.accountId,
@@ -755,7 +756,15 @@ export default function App() {
       ];
     });
     savePendingResults([...loadPendingResults(), result]);
-    setLastResult({ childName: account.childName, correctAnswers, totalTasks, totalTimeMs, synced: false, isNewBest });
+    setLastResult({
+      childName: account.childName,
+      correctAnswers,
+      totalTasks,
+      totalTimeMs,
+      synced: false,
+      isNewBest,
+      bestTimeMs
+    });
     setGame(null);
     setScreen("results");
     if (selectedGroupId) {
@@ -820,9 +829,9 @@ export default function App() {
     return (
       <section className="screen">
         <div className="hero">
-          <p className="eyebrow">Multiply Champion</p>
-          <h1>Grupy, tryby i ranking postępów.</h1>
-          <p className="subtitle">Wybierz grupę i tryb, a potem poprawiaj swój najlepszy wynik.</p>
+          <h1 className="heroTitle">Mistrz Mnożenia</h1>
+          <p className="heroSubheading">Grupy, tryby i ranking postępów</p>
+          <p className="subtitle heroDescription">Wybierz grupę i tryb, a potem poprawiaj swój najlepszy wynik.</p>
         </div>
         {account ? (
           <div className="card stack">
@@ -974,12 +983,18 @@ export default function App() {
               </div>
             </div>
           ) : (
-            <h2>{lastResult.correctAnswers} poprawnych odpowiedzi</h2>
+            <div className="recordCopy">
+              <h2>Dobra próba, {lastResult.childName}!</h2>
+              <p className="subtitle">Tym razem rekordu nie udało się pobić, ale ćwiczysz dalej.</p>
+            </div>
           )}
           <p className={lastResult.isNewBest ? "recordTime" : undefined}>
-            {lastResult.isNewBest ? "Nowy najlepszy czas: " : "Czas: "}
+            {lastResult.isNewBest ? "Nowy najlepszy czas: " : "Dzisiejszy czas: "}
             <strong>{formatMs(lastResult.totalTimeMs)}</strong>
           </p>
+          {!lastResult.isNewBest ? (
+            <p className="subtitle resultBestInfo">Twój najlepszy wynik nadal wynosi <strong>{formatMs(lastResult.bestTimeMs)}</strong>.</p>
+          ) : null}
           <div className="buttonGrid">
             <button className="primaryButton" onClick={startGame}>
               Zagraj jeszcze raz

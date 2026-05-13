@@ -79,8 +79,32 @@ select {
   line-height: 1.05;
 }
 
+.hero {
+  text-align: center;
+  display: grid;
+  gap: 0.45rem;
+}
+
 .hero h1 {
-  font-size: clamp(2.3rem, 6vw, 3.5rem);
+  font-size: clamp(2.7rem, 8vw, 4.2rem);
+}
+
+.heroTitle {
+  margin: 0;
+  line-height: 1.02;
+}
+
+.heroSubheading {
+  margin: 0;
+  font-size: clamp(1.15rem, 3.8vw, 1.55rem);
+  font-weight: 800;
+  color: var(--accent-dark);
+}
+
+.heroDescription {
+  font-size: clamp(0.98rem, 3vw, 1.15rem);
+  max-width: 28rem;
+  justify-self: center;
 }
 
 .subtitle,
@@ -287,6 +311,11 @@ select {
 .recordTime {
   text-align: center;
   font-size: 1.15rem;
+}
+
+.resultBestInfo {
+  text-align: center;
+  font-size: 1rem;
 }
 
 .mascotBadge {
