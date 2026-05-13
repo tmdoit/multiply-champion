@@ -741,19 +741,37 @@ export default function App() {
       synced: false
     };
     setLocalBoard((current) => {
-      const filtered = current.filter((entry) => entry.id !== `${account.accountId}:${selectedModeId}`);
-      return [
-        ...filtered,
-        {
-          id: `${account.accountId}:${selectedModeId}`,
-          modeId: selectedModeId,
-          childName: account.childName,
-          correctAnswers,
-          totalTasks,
-          totalTimeMs,
-          createdAt: result.createdAt
-        }
-      ];
+      const filtered = current.filter((entry) => entry.id !== account.accountId + ":" + selectedModeId);
+      const bestEntry = isNewBest
+        ? {
+            id: account.accountId + ":" + selectedModeId,
+            modeId: selectedModeId,
+            childName: account.childName,
+            correctAnswers,
+            totalTasks,
+            totalTimeMs,
+            createdAt: result.createdAt
+          }
+        : previousBest
+          ? {
+              id: account.accountId + ":" + selectedModeId,
+              modeId: selectedModeId,
+              childName: previousBest.childName,
+              correctAnswers: previousBest.correctAnswers,
+              totalTasks: previousBest.totalTasks,
+              totalTimeMs: previousBest.totalTimeMs,
+              createdAt: previousBest.createdAt
+            }
+          : {
+              id: account.accountId + ":" + selectedModeId,
+              modeId: selectedModeId,
+              childName: account.childName,
+              correctAnswers,
+              totalTasks,
+              totalTimeMs,
+              createdAt: result.createdAt
+            };
+      return [...filtered, bestEntry];
     });
     savePendingResults([...loadPendingResults(), result]);
     setLastResult({
@@ -1035,9 +1053,6 @@ export default function App() {
                     <p className="name">{entry.childName}</p>
                   </div>
                   <div className="leaderboardMeta">
-                    <p>
-                      {entry.correctAnswers}/{entry.totalTasks}
-                    </p>
                     <p>{formatMs(entry.totalTimeMs)}</p>
                   </div>
                 </article>
