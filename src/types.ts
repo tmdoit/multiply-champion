@@ -101,6 +101,10 @@ export type PlayerStats = {
   bestTimeMs: number | null;
   gamesPlayed: number;
   totalFactsAnswered: number;
+  gamesLast7Days: number;
+  averageLast10TimeMs: number | null;
+  currentStreakDays: number;
+  longestStreakDays: number;
   strongestFacts: PlayerFactStat[];
   needsPracticeFacts: PlayerFactStat[];
 };

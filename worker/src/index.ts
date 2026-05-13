@@ -893,6 +893,39 @@ async function getPlayerStats(db: D1Database, accountId: string, modeId: string)
     .bind(accountId, modeId)
     .first<Record<string, unknown>>();
 
+  const recentGamesRow = await db.prepare(
+    `SELECT COUNT(*) AS games_last_7_days
+     FROM game_sessions
+     WHERE account_id = ?1 AND mode_id = ?2 AND created_at >= ?3`
+  )
+    .bind(accountId, modeId, new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString())
+    .first<Record<string, unknown>>();
+
+  const lastTenRows = await db.prepare(
+    `SELECT total_time_ms
+     FROM game_sessions
+     WHERE account_id = ?1 AND mode_id = ?2
+     ORDER BY created_at DESC
+     LIMIT 10`
+  )
+    .bind(accountId, modeId)
+    .all();
+  const lastTenGames = (lastTenRows.results ?? []).map((row) => Number(row.total_time_ms));
+  const averageLast10TimeMs =
+    lastTenGames.length > 0 ? Math.round(lastTenGames.reduce((sum, value) => sum + value, 0) / lastTenGames.length) : null;
+
+  const streakRows = await db.prepare(
+    `SELECT substr(created_at, 1, 10) AS played_day
+     FROM game_sessions
+     WHERE account_id = ?1 AND mode_id = ?2
+     GROUP BY substr(created_at, 1, 10)
+     ORDER BY played_day DESC`
+  )
+    .bind(accountId, modeId)
+    .all();
+  const playedDays = (streakRows.results ?? []).map((row) => String(row.played_day));
+  const { currentStreakDays, longestStreakDays } = calculateStreaks(playedDays);
+
   const rows = await db.prepare(
     `SELECT fact_key, attempts, correct, wrong, average_ms
      FROM progress_facts
@@ -931,6 +964,10 @@ async function getPlayerStats(db: D1Database, accountId: string, modeId: string)
     bestTimeMs: bestRow ? Number(bestRow.total_time_ms) : null,
     gamesPlayed: Number(sessionRow?.games_played ?? 0),
     totalFactsAnswered: Number(sessionRow?.total_facts_answered ?? 0),
+    gamesLast7Days: Number(recentGamesRow?.games_last_7_days ?? 0),
+    averageLast10TimeMs,
+    currentStreakDays,
+    longestStreakDays,
     strongestFacts,
     needsPracticeFacts
   };
@@ -1206,6 +1243,49 @@ function withCors(response: Response, headers: HeadersInit): Response {
     merged.set(key, String(value));
   }
   return new Response(response.body, { status: response.status, headers: merged });
+}
+
+function calculateStreaks(playedDays: string[]): { currentStreakDays: number; longestStreakDays: number } {
+  if (playedDays.length === 0) {
+    return { currentStreakDays: 0, longestStreakDays: 0 };
+  }
+
+  const dayDiff = (left: string, right: string): number => {
+    const leftDate = new Date(left + "T00:00:00Z");
+    const rightDate = new Date(right + "T00:00:00Z");
+    return Math.round((leftDate.getTime() - rightDate.getTime()) / (24 * 60 * 60 * 1000));
+  };
+
+  let longestStreakDays = 1;
+  let runningLongest = 1;
+  for (let index = 1; index < playedDays.length; index += 1) {
+    if (dayDiff(playedDays[index - 1], playedDays[index]) === 1) {
+      runningLongest += 1;
+      longestStreakDays = Math.max(longestStreakDays, runningLongest);
+    } else {
+      runningLongest = 1;
+    }
+  }
+
+  const today = new Date();
+  const todayIso = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()))
+    .toISOString()
+    .slice(0, 10);
+  const diffFromToday = dayDiff(todayIso, playedDays[0]);
+  if (diffFromToday > 1) {
+    return { currentStreakDays: 0, longestStreakDays };
+  }
+
+  let currentStreakDays = 1;
+  for (let index = 1; index < playedDays.length; index += 1) {
+    if (dayDiff(playedDays[index - 1], playedDays[index]) === 1) {
+      currentStreakDays += 1;
+    } else {
+      break;
+    }
+  }
+
+  return { currentStreakDays, longestStreakDays };
 }
 
 function safeParseJson(input: string): unknown {

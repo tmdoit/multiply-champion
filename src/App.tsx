@@ -1202,6 +1202,19 @@ export default function App() {
               <p className="rank">Rozwiązane działania</p>
               <p className="statsValue">{stats?.totalFactsAnswered ?? 0}</p>
             </article>
+            <article className="statsCard">
+              <p className="rank">Gry w 7 dni</p>
+              <p className="statsValue">{stats?.gamesLast7Days ?? 0}</p>
+            </article>
+            <article className="statsCard">
+              <p className="rank">Średni czas z 10 gier</p>
+              <p className="statsValue">{stats?.averageLast10TimeMs != null ? formatMs(stats.averageLast10TimeMs) : "-"}</p>
+            </article>
+            <article className="statsCard">
+              <p className="rank">Aktualna seria</p>
+              <p className="statsValue">{stats?.currentStreakDays ?? 0}</p>
+              <p className="rank">Najdłuższa {stats?.longestStreakDays ?? 0}</p>
+            </article>
           </div>
           <div className="card stack softCard">
             <p className="name">Umiesz świetnie</p>
