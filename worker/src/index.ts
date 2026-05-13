@@ -47,6 +47,14 @@ type ChatMessagePayload = {
   message: string;
 };
 
+type StatsFactSummary = {
+  factKey: string;
+  attempts: number;
+  correct: number;
+  wrong: number;
+  averageMs: number;
+};
+
 type Env = {
   DB: D1Database;
 };
@@ -564,6 +572,12 @@ export default {
         return json(await getLeaderboard(env.DB, groupId, modeId), headers);
       }
 
+      if (url.pathname === "/stats" && request.method === "GET") {
+        const account = await requireAuth(request, env.DB);
+        const modeId = url.searchParams.get("modeId") ?? (await getDefaultModeId(env.DB));
+        return json(await getPlayerStats(env.DB, account.accountId, modeId), headers);
+      }
+
       if (url.pathname === "/results" && request.method === "POST") {
         const account = await requireAuth(request, env.DB);
         const body = (await request.json()) as ResultPayload;
@@ -571,6 +585,12 @@ export default {
           return json({ error: "Invalid account" }, headers, 403);
         }
         const now = new Date().toISOString();
+        await env.DB.prepare(
+          `INSERT INTO game_sessions (id, account_id, mode_id, correct_answers, total_tasks, total_time_ms, created_at)
+           VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)`
+        )
+          .bind(crypto.randomUUID(), account.accountId, body.modeId, body.correctAnswers, body.totalTasks, body.totalTimeMs, now)
+          .run();
         const previous = await env.DB.prepare(
           `SELECT correct_answers, total_time_ms FROM best_results WHERE account_id = ?1 AND mode_id = ?2`
         )
@@ -698,6 +718,17 @@ async function ensureSystemData(db: D1Database): Promise<void> {
     .bind(now)
     .run();
   await db.prepare(`UPDATE groups_table SET name = 'Świat', is_system = 1 WHERE id = 'world'`).run();
+  await db.prepare(
+    `CREATE TABLE IF NOT EXISTS game_sessions (
+      id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      mode_id TEXT NOT NULL,
+      correct_answers INTEGER NOT NULL,
+      total_tasks INTEGER NOT NULL,
+      total_time_ms INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    )`
+  ).run();
   await db.prepare(
     `CREATE TABLE IF NOT EXISTS group_messages (
       id TEXT PRIMARY KEY,
@@ -844,6 +875,65 @@ async function listGroupsForAccount(db: D1Database, accountId: string): Promise<
     }
     return { ...group, name };
   });
+}
+
+
+async function getPlayerStats(db: D1Database, accountId: string, modeId: string) {
+  const bestRow = await db.prepare(
+    `SELECT total_time_ms FROM best_results WHERE account_id = ?1 AND mode_id = ?2`
+  )
+    .bind(accountId, modeId)
+    .first<Record<string, unknown>>();
+
+  const sessionRow = await db.prepare(
+    `SELECT COUNT(*) AS games_played, COALESCE(SUM(total_tasks), 0) AS total_facts_answered
+     FROM game_sessions
+     WHERE account_id = ?1 AND mode_id = ?2`
+  )
+    .bind(accountId, modeId)
+    .first<Record<string, unknown>>();
+
+  const rows = await db.prepare(
+    `SELECT fact_key, attempts, correct, wrong, average_ms
+     FROM progress_facts
+     WHERE account_id = ?1 AND mode_id = ?2`
+  )
+    .bind(accountId, modeId)
+    .all();
+
+  const facts: StatsFactSummary[] = (rows.results ?? []).map((row) => ({
+    factKey: String(row.fact_key),
+    attempts: Number(row.attempts),
+    correct: Number(row.correct),
+    wrong: Number(row.wrong),
+    averageMs: Number(row.average_ms)
+  }));
+
+  const strongestFacts = facts
+    .filter((fact) => fact.attempts >= 3)
+    .sort((a, b) => {
+      if (a.wrong !== b.wrong) return a.wrong - b.wrong;
+      if (a.averageMs !== b.averageMs) return a.averageMs - b.averageMs;
+      return b.attempts - a.attempts;
+    })
+    .slice(0, 5);
+
+  const needsPracticeFacts = facts
+    .filter((fact) => fact.attempts >= 2)
+    .sort((a, b) => {
+      if (a.wrong !== b.wrong) return b.wrong - a.wrong;
+      if (a.averageMs !== b.averageMs) return b.averageMs - a.averageMs;
+      return b.attempts - a.attempts;
+    })
+    .slice(0, 5);
+
+  return {
+    bestTimeMs: bestRow ? Number(bestRow.total_time_ms) : null,
+    gamesPlayed: Number(sessionRow?.games_played ?? 0),
+    totalFactsAnswered: Number(sessionRow?.total_facts_answered ?? 0),
+    strongestFacts,
+    needsPracticeFacts
+  };
 }
 
 async function getLeaderboard(db: D1Database, groupId: string, modeId: string) {

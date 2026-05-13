@@ -5,6 +5,7 @@ import {
   createInvite,
   fetchActivity,
   fetchGroupChat,
+  fetchPlayerStats,
   fetchGroupInvites,
   fetchGroupMembers,
   fetchGroups,
@@ -53,6 +54,7 @@ import type {
   InvitePreview,
   LeaderboardEntry,
   ModeSummary,
+  PlayerStats,
   PendingProgressSync,
   PendingResultSync,
   ProgressSnapshot,
@@ -106,6 +108,7 @@ export default function App() {
   const [localBoard, setLocalBoard] = useState<LeaderboardEntry[]>(() => loadLocalLeaderboard());
   const [remoteBoard, setRemoteBoard] = useState<LeaderboardEntry[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
+  const [stats, setStats] = useState<PlayerStats | null>(null);
   const [chatMessages, setChatMessages] = useState<GroupChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [members, setMembers] = useState<GroupMember[]>([]);
@@ -272,6 +275,13 @@ export default function App() {
   }, [screen, account, selectedGroupId]);
 
   useEffect(() => {
+    if (screen !== "stats" || !account || !selectedModeId || !navigator.onLine || !hasApi()) {
+      return;
+    }
+    void refreshStats(account, selectedModeId);
+  }, [screen, account, selectedModeId]);
+
+  useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("invite");
     if (token && hasApi()) {
       void fetchInvitePreview(token)
@@ -356,6 +366,22 @@ export default function App() {
     }
   }
 
+
+  async function refreshStats(activeAccount: ConfirmedAccount, modeId: string): Promise<void> {
+    if (!navigator.onLine || !hasApi()) {
+      return;
+    }
+    try {
+      const nextStats = await fetchPlayerStats(modeId, activeAccount.sessionToken);
+      setStats(nextStats);
+    } catch (error) {
+      if (error instanceof Error && error.message === "UNAUTHORIZED") {
+        forceLogout("Sesja wygasła. Zaloguj się ponownie online.");
+      } else {
+        setSyncStatus("Statystyki są chwilowo niedostępne offline");
+      }
+    }
+  }
 
   async function refreshChat(activeAccount: ConfirmedAccount, groupId: string): Promise<void> {
     if (!navigator.onLine || !hasApi()) {
@@ -983,6 +1009,9 @@ export default function App() {
               <button className="secondaryButton" onClick={() => setScreen("leaderboard")}>
                 Ranking
               </button>
+              <button className="secondaryButton" onClick={() => setScreen("stats")}>
+                Statystyki
+              </button>
               <button className="secondaryButton" onClick={() => setScreen("activity")}>
                 Aktywność
               </button>
@@ -1140,6 +1169,69 @@ export default function App() {
                 </article>
               ))
             )}
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+
+  function renderStats(): JSX.Element {
+    const strongestFacts = stats?.strongestFacts ?? [];
+    const needsPracticeFacts = stats?.needsPracticeFacts ?? [];
+    return (
+      <section className="screen">
+        <div className="card stack">
+          <div className="sectionTitleRow">
+            <h2>Statystyki</h2>
+            <button className="ghostButton small" onClick={() => setScreen("home")}>
+              Wstecz
+            </button>
+          </div>
+          <p className="subtitle">{selectedMode?.label ?? "Tryb"}</p>
+          <div className="statsGrid">
+            <article className="statsCard">
+              <p className="rank">Najlepszy czas</p>
+              <p className="statsValue">{stats?.bestTimeMs != null ? formatMs(stats.bestTimeMs) : "-"}</p>
+            </article>
+            <article className="statsCard">
+              <p className="rank">Rozegrane gry</p>
+              <p className="statsValue">{stats?.gamesPlayed ?? 0}</p>
+            </article>
+            <article className="statsCard">
+              <p className="rank">Rozwiązane działania</p>
+              <p className="statsValue">{stats?.totalFactsAnswered ?? 0}</p>
+            </article>
+          </div>
+          <div className="card stack softCard">
+            <p className="name">Umiesz świetnie</p>
+            <div className="factStatsList">
+              {strongestFacts.length === 0 ? (
+                <p className="statusLine">Potrzeba jeszcze kilku gier, aby to ocenić.</p>
+              ) : (
+                strongestFacts.map((fact) => (
+                  <article className="factStatCard" key={fact.factKey}>
+                    <p className="name">{fact.factKey.replace("x", "×")}</p>
+                    <p className="rank">Średni czas {formatMs(fact.averageMs)} • błędy {fact.wrong}/{fact.attempts}</p>
+                  </article>
+                ))
+              )}
+            </div>
+          </div>
+          <div className="card stack softCard">
+            <p className="name">Poćwicz jeszcze</p>
+            <div className="factStatsList">
+              {needsPracticeFacts.length === 0 ? (
+                <p className="statusLine">Na razie nie ma działań wymagających dodatkowej pracy.</p>
+              ) : (
+                needsPracticeFacts.map((fact) => (
+                  <article className="factStatCard" key={fact.factKey}>
+                    <p className="name">{fact.factKey.replace("x", "×")}</p>
+                    <p className="rank">Średni czas {formatMs(fact.averageMs)} • błędy {fact.wrong}/{fact.attempts}</p>
+                  </article>
+                ))
+              )}
+            </div>
           </div>
         </div>
       </section>
@@ -1340,6 +1432,7 @@ export default function App() {
       {screen === "game" && renderGame()}
       {screen === "results" && renderResults()}
       {screen === "leaderboard" && renderLeaderboard()}
+      {screen === "stats" && renderStats()}
       {screen === "activity" && renderActivity()}
       {screen === "chat" && renderChat()}
       {screen === "group" && renderGroup()}

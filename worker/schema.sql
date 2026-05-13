@@ -95,3 +95,14 @@ CREATE TABLE IF NOT EXISTS group_messages (
   message TEXT NOT NULL,
   created_at TEXT NOT NULL
 );
+
+
+CREATE TABLE IF NOT EXISTS game_sessions (
+  id TEXT PRIMARY KEY,
+  account_id TEXT NOT NULL,
+  mode_id TEXT NOT NULL,
+  correct_answers INTEGER NOT NULL,
+  total_tasks INTEGER NOT NULL,
+  total_time_ms INTEGER NOT NULL,
+  created_at TEXT NOT NULL
+);

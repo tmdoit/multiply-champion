@@ -1,4 +1,4 @@
-export type Screen = "home" | "game" | "results" | "leaderboard" | "activity" | "group" | "chat";
+export type Screen = "home" | "game" | "results" | "leaderboard" | "activity" | "group" | "chat" | "stats";
 
 export type HostConfig = {
   taskCount: number;
@@ -87,6 +87,22 @@ export type GroupChatMessage = {
   displayName: string;
   message: string;
   createdAt: string;
+};
+
+export type PlayerFactStat = {
+  factKey: string;
+  attempts: number;
+  correct: number;
+  wrong: number;
+  averageMs: number;
+};
+
+export type PlayerStats = {
+  bestTimeMs: number | null;
+  gamesPlayed: number;
+  totalFactsAnswered: number;
+  strongestFacts: PlayerFactStat[];
+  needsPracticeFacts: PlayerFactStat[];
 };
 
 export type FactKey = `${number}x${number}`;

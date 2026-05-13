@@ -10,7 +10,8 @@ import type {
   LeaderboardEntry,
   MeResponse,
   PendingProgressSync,
-  PendingResultSync
+  PendingResultSync,
+  PlayerStats
 } from "./types";
 
 function createUrl(path: string): string {
@@ -187,6 +188,13 @@ export async function fetchActivity(groupId: string, modeId: string | null, sess
     headers: createAuthHeaders(sessionToken)
   });
   return parseJson<ActivityEvent[]>(response);
+}
+
+export async function fetchPlayerStats(modeId: string, sessionToken: string): Promise<PlayerStats> {
+  const response = await fetch(createUrl(`/stats?modeId=${encodeURIComponent(modeId)}`), {
+    headers: createAuthHeaders(sessionToken)
+  });
+  return parseJson<PlayerStats>(response);
 }
 
 export async function fetchGroupChat(groupId: string, sessionToken: string): Promise<GroupChatMessage[]> {
