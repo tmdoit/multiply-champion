@@ -255,10 +255,32 @@ export default {
         const account = await requireAuth(request, env.DB);
         const groupId = decodeURIComponent(groupMatch[1]);
         const membership = await requireMembership(env.DB, groupId, account.accountId);
-        if (membership.role === "owner" && groupId !== "world") {
-          return json({ error: "Owner cannot leave own group" }, headers, 400);
-        }
         const topBefore = await getTopResultsForGroup(env.DB, groupId);
+        if (membership.role === "owner" && groupId !== "world") {
+          const countRow = await env.DB.prepare(`SELECT COUNT(*) AS member_count FROM group_memberships WHERE group_id = ?1`)
+            .bind(groupId)
+            .first<Record<string, unknown>>();
+          const memberCount = Number(countRow?.member_count ?? 0);
+          if (memberCount > 1) {
+            return json({ error: "Owner must stay until alone" }, headers, 400);
+          }
+          await env.DB.prepare(`DELETE FROM group_memberships WHERE group_id = ?1`)
+            .bind(groupId)
+            .run();
+          await env.DB.prepare(`DELETE FROM group_invites WHERE group_id = ?1`)
+            .bind(groupId)
+            .run();
+          await env.DB.prepare(`DELETE FROM activity_events WHERE group_id = ?1`)
+            .bind(groupId)
+            .run();
+          await env.DB.prepare(`DELETE FROM group_messages WHERE group_id = ?1`)
+            .bind(groupId)
+            .run();
+          await env.DB.prepare(`DELETE FROM groups_table WHERE id = ?1`)
+            .bind(groupId)
+            .run();
+          return json({ ok: true }, headers);
+        }
         await env.DB.prepare(`DELETE FROM group_memberships WHERE group_id = ?1 AND account_id = ?2`)
           .bind(groupId, account.accountId)
           .run();

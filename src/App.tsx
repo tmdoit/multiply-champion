@@ -136,6 +136,8 @@ export default function App() {
     [groups, selectedGroupId]
   );
   const currentTask = game ? game.queue[game.currentIndex] : null;
+  const selectedGroupMemberCount = selectedGroup ? members.filter((member) => member).length : 0;
+  const ownerMustStayUntilAlone = selectedGroup?.role === "owner" && selectedGroup.id !== "world" && selectedGroupMemberCount > 1;
 
   useEffect(() => {
     saveLocalLeaderboard(localBoard);
@@ -187,6 +189,15 @@ export default function App() {
       void flushPendingSync(account, selectedModeId, selectedGroupId);
     }
   }, [account, selectedGroupId, selectedModeId]);
+
+  useEffect(() => {
+    if (!account || !selectedGroupId || selectedGroupId === "world" || !navigator.onLine || !hasApi()) {
+      return;
+    }
+    void fetchGroupMembers(selectedGroupId, account.sessionToken)
+      .then((memberList) => setMembers(memberList))
+      .catch(() => undefined);
+  }, [account, selectedGroupId]);
 
   useEffect(() => {
     if (!game || !HOST_CONFIG.timer.enabled || game.waitingForContinue) {
@@ -640,6 +651,10 @@ export default function App() {
     if (!account || !selectedGroup || selectedGroup.id === "world") {
       return;
     }
+    if (selectedGroup.role === "owner" && selectedGroupMemberCount > 1) {
+      setPopupMessage("Właściciel może opuścić grupę dopiero, gdy zostanie w niej sam.");
+      return;
+    }
     if (!navigator.onLine || !hasApi()) {
       setPopupMessage("Opuszczenie grupy wymaga połączenia z internetem.");
       return;
@@ -942,9 +957,14 @@ export default function App() {
               </select>
             </label>
             {selectedGroup && selectedGroup.id !== "world" ? (
-              <button className="ghostButton" onClick={() => setLeaveGroupPromptOpen(true)}>
-                Opuść grupę
-              </button>
+              <>
+                <button className="ghostButton" onClick={() => setLeaveGroupPromptOpen(true)} disabled={ownerMustStayUntilAlone}>
+                  Opuść grupę
+                </button>
+                {ownerMustStayUntilAlone ? (
+                  <p className="statusLine">Właściciel może opuścić grupę dopiero, gdy zostanie w niej sam.</p>
+                ) : null}
+              </>
             ) : null}
             <label className="field">
               <span>Tryb</span>
