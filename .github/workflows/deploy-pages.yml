@@ -35,9 +35,10 @@ jobs:
         env:
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
           VITE_TASK_COUNT: ${{ vars.VITE_TASK_COUNT }}
-          VITE_MAX_RESULT: ${{ vars.VITE_MAX_RESULT }}
+          VITE_DEFAULT_MODE_CODE: ${{ vars.VITE_DEFAULT_MODE_CODE }}
           VITE_TIMER_ENABLED: ${{ vars.VITE_TIMER_ENABLED }}
           VITE_TIMER_SECONDS_PER_TASK: ${{ vars.VITE_TIMER_SECONDS_PER_TASK }}
+          VITE_INVITE_EXPIRATION_HOURS: ${{ vars.VITE_INVITE_EXPIRATION_HOURS }}
 
       - name: Setup Pages
         uses: actions/configure-pages@v5

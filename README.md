@@ -48,8 +48,9 @@ Optional host-level app config can also be set at build time:
 VITE_API_BASE_URL=https://your-worker.your-subdomain.workers.dev \
 VITE_TASK_COUNT=10 \
 VITE_DEFAULT_MODE_CODE=to100-table10 \
-VITE_TIMER_ENABLED=false \
-VITE_TIMER_SECONDS_PER_TASK=20 \
+VITE_TIMER_ENABLED=true \
+VITE_TIMER_SECONDS_PER_TASK=10 \
+VITE_INVITE_EXPIRATION_HOURS=24 \
 npm run build
 ```
 
@@ -91,8 +92,9 @@ Set these in the GitHub repository before pushing `main`:
 - `VITE_API_BASE_URL`: your deployed Worker URL, for example `https://multiply-api.your-subdomain.workers.dev`
 - `VITE_TASK_COUNT`: optional, defaults to `10`
 - `VITE_DEFAULT_MODE_CODE`: optional, defaults to `to100-table10`
-- `VITE_TIMER_ENABLED`: optional, `true` or `false`, defaults to `false`
-- `VITE_TIMER_SECONDS_PER_TASK`: optional, defaults to `20`
+- `VITE_TIMER_ENABLED`: optional, `true` or `false`, defaults to `true`
+- `VITE_TIMER_SECONDS_PER_TASK`: optional, defaults to `10`
+- `VITE_INVITE_EXPIRATION_HOURS`: optional, defaults to `24`
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 
@@ -100,7 +102,7 @@ Set these in the GitHub repository before pushing `main`:
 
 - `accounts`: unique child names with hashed PINs
 - `auth_sessions`: persisted login sessions for confirmed devices
-- `groups_table`: groups, including the system group `World`
+- `groups_table`: groups, including the system group `Świat`
 - `group_memberships`: owner/admin/member membership records
 - `group_invites`: expiring invitation links
 - `modes`: game mode definitions such as `Do 100, Tabliczka 10`
@@ -110,13 +112,13 @@ Set these in the GitHub repository before pushing `main`:
 
 ## Current product behavior
 
-- Every account automatically belongs to the `World` group.
+- Every account automatically belongs to the `Świat` group.
 - Leaderboard is always filtered by `group + mode`.
 - A user has one best result per mode, shared across all groups they belong to.
 - The selected group only changes where that best result is visible socially.
 - Group owners can create groups.
 - Group owners and admins can create invitation links.
-- Invitation links expire after a chosen number of hours.
+- Invitation links expire after a host-configured number of hours.
 - Invitation link opens the app, then the user logs in or registers, and then confirms the display name used in that group.
 - Group feed shows social events and best-result updates.
 
