@@ -1343,6 +1343,12 @@ export default function App() {
       {screen === "activity" && renderActivity()}
       {screen === "chat" && renderChat()}
       {screen === "group" && renderGroup()}
+      {account && screen !== "chat" ? (
+        <button className="floatingChatButton" onClick={() => setScreen("chat")} aria-label="Otwórz czat">
+          <span className="floatingChatIcon" aria-hidden="true">💬</span>
+          <span>Czat</span>
+        </button>
+      ) : null}
       {popupMessage ? (
         <div className="popupOverlay" role="dialog" aria-modal="true">
           <div className="popupCard">

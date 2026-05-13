@@ -521,3 +521,34 @@ select {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+
+.floatingChatButton {
+  position: fixed;
+  right: 1rem;
+  bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+  z-index: 30;
+  min-height: 3.8rem;
+  min-width: 3.8rem;
+  padding: 0.8rem 1rem;
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ff9a66 0%, #ef6d38 100%);
+  color: white;
+  box-shadow: 0 16px 34px rgba(239, 109, 56, 0.3);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+  font-weight: 900;
+}
+
+.floatingChatIcon {
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+@media (max-width: 480px) {
+  .floatingChatButton {
+    right: 0.75rem;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+  }
+}
