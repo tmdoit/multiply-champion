@@ -281,17 +281,17 @@ export default function App() {
     return (
       <section className="screen homeScreen">
         <div className="hero">
-          <p className="eyebrow">Lokalne MVP</p>
           <h1 className="heroTitle">Mistrz Mnożenia</h1>
-          <p className="heroSubheading">Do 100, tabliczka 10</p>
           <p className="subtitle heroDescription">Jedna ścieżka na raz. Najpierw wracają rozpoczęte działania, potem pojawiają się nowe.</p>
         </div>
 
-        <div className="card stack compactCard">
-          <p className="name">Twoje imię</p>
+        <div className="card compactCard nameCard">
           {childName && !isEditingName ? (
             <div className="savedNameRow">
-              <p className="savedNameValue">{childName}</p>
+              <div className="savedNameCopy">
+                <p className="rank">Twoje imię</p>
+                <p className="savedNameValue">{childName}</p>
+              </div>
               <button
                 className="ghostButton small iconButton"
                 onClick={() => {
@@ -304,16 +304,16 @@ export default function App() {
               </button>
             </div>
           ) : (
-            <>
-              <label className="field">
-                <span>Jak masz na imię?</span>
+            <div className="nameEditRow">
+              <label className="field nameField">
+                <span>Twoje imię</span>
                 <input
                   value={nameDraft}
                   onChange={(event) => setNameDraft(event.target.value.slice(0, 20))}
                   placeholder="Np. Ania"
                 />
               </label>
-              <div className="buttonRow">
+              <div className="nameActions">
                 <button className="ghostButton small" onClick={handleSaveName}>
                   Zapisz
                 </button>
@@ -329,7 +329,7 @@ export default function App() {
                   </button>
                 ) : null}
               </div>
-            </>
+            </div>
           )}
         </div>
 
@@ -406,28 +406,29 @@ export default function App() {
     }
     return (
       <section className="screen gameScreen">
-        <div className="hudCard">
-          <div className="hudTopRow">
-            <p className="eyebrow">Ścieżka ×{game.pathMultiplier}</p>
-            <p className="timer">{Math.ceil(game.remainingMs / 1000)}s</p>
-          </div>
-          <div className="phaseBannerWrap">
-            <div className={`phaseBanner ${currentTask.phase === "review" ? "review" : "fresh"}`}>
-              <span className="phasePill">{currentTask.phase === "review" ? "Powtórka" : "Nowe"}</span>
-              <p className="phaseText">
-                {currentTask.phase === "review"
-                  ? "To działanie wróciło, żeby lepiej je zapamiętać."
-                  : "To nowe działanie w tej ścieżce."}
-              </p>
+        <div className="hudCard compactHudCard">
+          <div className="hudSummaryRow">
+            <div className="hudMetric">
+              <span className="hudLabel">Ścieżka</span>
+              <strong>×{game.pathMultiplier}</strong>
+            </div>
+            <div className="hudMetric">
+              <span className="hudLabel">Zadanie</span>
+              <strong>{game.currentIndex + 1}/{game.queue.length}</strong>
+            </div>
+            <div className="hudMetric timerMetric">
+              <span className="hudLabel">Czas</span>
+              <strong>{Math.ceil(game.remainingMs / 1000)}s</strong>
             </div>
           </div>
-          <div className="hudMetaRow">
-            <p>Zadanie {game.currentIndex + 1} z {game.queue.length}</p>
-            <p>Stan działania: {currentTaskStep}/3</p>
-          </div>
-          <div className="hudMetaRow">
-            <p>{describeStep(currentTaskStep)}</p>
-            <p>{currentTaskStep}/3</p>
+          <div className="hudStatusRow">
+            <span className={`phasePill ${currentTask.phase === "review" ? "reviewPill" : "freshPill"}`}>
+              {currentTask.phase === "review" ? "Powtórka" : "Nowe"}
+            </span>
+            <div className="hudStateText">
+              <span>Stan: {currentTaskStep}/3</span>
+              <span>{describeStep(currentTaskStep)}</span>
+            </div>
           </div>
         </div>
 

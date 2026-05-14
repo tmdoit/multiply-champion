@@ -90,13 +90,6 @@ input {
   font-size: clamp(2.6rem, 8vw, 4rem);
 }
 
-.heroSubheading {
-  margin: 0;
-  font-size: clamp(1.1rem, 3.5vw, 1.4rem);
-  font-weight: 800;
-  color: var(--accent-dark);
-}
-
 .heroDescription,
 .subtitle,
 .statusLine,
@@ -203,11 +196,38 @@ input {
   margin: 0.2rem 0 0;
 }
 
+.nameCard {
+  display: block;
+}
+
 .savedNameRow {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.9rem;
+}
+
+.savedNameCopy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.nameEditRow {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 0.9rem;
+  align-items: end;
+}
+
+.nameField {
+  margin: 0;
+}
+
+.nameActions {
+  display: inline-flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .savedNameValue {
@@ -355,55 +375,80 @@ input {
 
 .hudCard {
   display: grid;
-  gap: 0.45rem;
+  gap: 0.65rem;
 }
 
-.hudMetaRow,
-.hudTopRow {
-  font-weight: 800;
+.compactHudCard {
+  padding: 1rem 1.1rem;
 }
 
-.phaseBannerWrap {
-  margin-top: 0.15rem;
-}
-
-.phaseBanner {
+.hudSummaryRow {
   display: grid;
-  gap: 0.35rem;
-  padding: 0.85rem 1rem;
-  border-radius: 18px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.6rem;
 }
 
-.phaseBanner.review {
-  background: rgba(255, 138, 91, 0.12);
+.hudMetric {
+  display: grid;
+  gap: 0.12rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.72);
+  text-align: center;
 }
 
-.phaseBanner.fresh {
-  background: rgba(31, 157, 104, 0.12);
+.hudMetric strong {
+  font-size: 1.08rem;
+  color: #16304a;
+}
+
+.hudLabel {
+  font-size: 0.72rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--soft-text);
+}
+
+.timerMetric strong {
+  color: var(--accent-dark);
+}
+
+.hudStatusRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
 }
 
 .phasePill {
   display: inline-flex;
   align-items: center;
-  justify-self: start;
-  min-height: 1.8rem;
-  padding: 0 0.65rem;
+  min-height: 1.9rem;
+  padding: 0 0.7rem;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.85);
   color: #16304a;
   font-size: 0.78rem;
   font-weight: 900;
 }
 
-.phaseText {
-  margin: 0;
-  color: #16304a;
-  font-size: 0.92rem;
-  font-weight: 700;
+.reviewPill {
+  background: rgba(255, 138, 91, 0.18);
 }
 
-.timer {
-  color: var(--accent-dark);
+.freshPill {
+  background: rgba(31, 157, 104, 0.18);
+}
+
+.hudStateText {
+  display: inline-flex;
+  gap: 0.7rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  color: #16304a;
+  font-size: 0.92rem;
+  font-weight: 800;
 }
 
 .problem {
@@ -520,11 +565,29 @@ input {
 
   .sectionTitleRow,
   .buttonRow,
-  .hudTopRow,
-  .hudMetaRow,
   .progressSummaryRow,
-  .savedNameRow {
+  .savedNameRow,
+  .nameEditRow {
     align-items: start;
     flex-direction: column;
+  }
+
+  .nameEditRow {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .nameActions {
+    justify-content: start;
+  }
+
+  .hudSummaryRow {
+    grid-template-columns: 1fr;
+  }
+
+  .hudStatusRow,
+  .hudStateText {
+    align-items: start;
+    justify-content: start;
   }
 }
