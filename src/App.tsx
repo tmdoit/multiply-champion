@@ -456,7 +456,7 @@ export default function App() {
     const nextPathLabel = lastResult.pathMultiplier < APP_CONFIG.pathCount ? `×${lastResult.pathMultiplier + 1}` : null;
     return (
       <section className="screen resultsScreen">
-        <div className={`card stack celebrateCard ${lastResult.completedPath ? "successGlow" : ""}`}>
+        <div className={`card stack celebrateCard ${lastResult.completedPath || lastResult.fullyCompleted ? "successGlow" : ""}`}>
           <div className="celebrateBurst" aria-hidden="true">
             <span>✨</span>
             <span>🎉</span>
@@ -472,8 +472,17 @@ export default function App() {
           </h2>
           <p className="subtitle">Czas tej rundy: <strong>{formatMs(lastResult.totalTimeMs)}</strong></p>
           <div className="focusSummary">
-            <p className="bigProgress">×{lastResult.pathMultiplier} • {lastResult.steps}/{lastResult.totalSteps}</p>
-            <p className="statusLine">Opanowane {lastResult.masteredFacts} z {lastResult.totalFacts} działań</p>
+            {lastResult.fullyCompleted ? (
+              <>
+                <p className="bigProgress">10 ścieżek ukończonych</p>
+                <p className="statusLine">Całe okrążenie jest gotowe.</p>
+              </>
+            ) : (
+              <>
+                <p className="bigProgress">×{lastResult.pathMultiplier} • {lastResult.steps}/{lastResult.totalSteps}</p>
+                <p className="statusLine">Opanowane {lastResult.masteredFacts} z {lastResult.totalFacts} działań</p>
+              </>
+            )}
           </div>
           {lastResult.completedPath && nextPathLabel ? (
             <p className="pathHelp">Odblokowano kolejną ścieżkę: {nextPathLabel}.</p>
