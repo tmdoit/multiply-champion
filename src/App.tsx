@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { APP_CONFIG } from "./constants";
 import { loadChildName, loadLapCount, loadProgress, saveChildName, saveLapCount, saveProgress } from "./storage";
-import type { FactProgress, GameState, RunResult, Screen, SessionTask } from "./types";
+import type { FactProgress, GameState, RunResult, Screen } from "./types";
 import {
   buildSessionQueue,
   describeStep,
@@ -54,7 +54,7 @@ export default function App() {
         const elapsed = Date.now() - current.taskStartedAt;
         const remainingMs = Math.max(0, APP_CONFIG.timerSecondsPerTask * 1000 - elapsed);
         if (remainingMs === 0) {
-          window.setTimeout(() => handleIncorrectAnswer("Czas minął."), 0);
+          window.setTimeout(() => handleIncorrectAnswer(`Czas minął. Poprawna odpowiedź: ${current.queue[current.currentIndex].answer}`), 0);
           return {
             ...current,
             remainingMs: 0,
@@ -222,25 +222,16 @@ export default function App() {
     progressRef.current = nextProgress;
     setProgress(nextProgress);
 
-    const repeatedTask: SessionTask = {
-      ...task,
-      phase: "review",
-      stepBefore: getFactStep(nextProgress, task.key)
-    };
-    const nextQueue = [...current.queue];
-    nextQueue.splice(current.currentIndex, 1);
-    nextQueue.push(repeatedTask);
-
     setGame({
       ...current,
       input: "",
       feedback: {
         type: "wrong",
-        text: `${prefix} To działanie wróci jeszcze raz.`
+        text: prefix
       },
       waitingForNext: true,
-      pendingQueue: nextQueue,
-      pendingIndex: current.currentIndex,
+      pendingQueue: current.queue,
+      pendingIndex: current.currentIndex + 1,
       feedbackDelayMs: APP_CONFIG.feedbackPauseMs,
       remainingMs: 0,
       mistakeCount: current.mistakeCount + 1
