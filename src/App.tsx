@@ -19,6 +19,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
   const [childName, setChildName] = useState(() => loadChildName());
   const [nameDraft, setNameDraft] = useState(() => loadChildName());
+  const [isEditingName, setIsEditingName] = useState(() => loadChildName().trim().length === 0);
   const [progress, setProgress] = useState<FactProgress>(() => loadProgress());
   const [game, setGame] = useState<GameState | null>(null);
   const [lastResult, setLastResult] = useState<RunResult | null>(null);
@@ -117,8 +118,9 @@ export default function App() {
     const trimmed = nameDraft.trim().slice(0, 20);
     setChildName(trimmed);
     saveChildName(trimmed);
+    setIsEditingName(trimmed.length === 0);
     if (!trimmed) {
-      setPopupMessage("Imię jest opcjonalne, ale pomaga dopingować dziecko.");
+      setPopupMessage("Możesz wpisać imię później.");
     }
   }
 
@@ -282,44 +284,71 @@ export default function App() {
           <p className="eyebrow">Lokalne MVP</p>
           <h1 className="heroTitle">Mistrz Mnożenia</h1>
           <p className="heroSubheading">Do 100, tabliczka 10</p>
-          <p className="subtitle heroDescription">Jedna ścieżka na raz. Najpierw powtórka, potem nowe działania.</p>
+          <p className="subtitle heroDescription">Jedna ścieżka na raz. Najpierw wracają rozpoczęte działania, potem pojawiają się nowe.</p>
         </div>
 
         <div className="card stack compactCard">
-          <label className="field">
-            <span>Imię dziecka</span>
-            <input
-              value={nameDraft}
-              onChange={(event) => setNameDraft(event.target.value.slice(0, 20))}
-              placeholder="Np. Ania"
-            />
-          </label>
-          <div className="buttonRow">
-            <button className="ghostButton small" onClick={handleSaveName}>
-              Zapisz imię
-            </button>
-            <p className="statusLine">{childName ? `Cześć, ${childName}!` : "Imię jest opcjonalne."}</p>
-          </div>
+          <p className="name">Twoje imię</p>
+          {childName && !isEditingName ? (
+            <div className="savedNameRow">
+              <p className="savedNameValue">{childName}</p>
+              <button
+                className="ghostButton small iconButton"
+                onClick={() => {
+                  setNameDraft(childName);
+                  setIsEditingName(true);
+                }}
+                aria-label="Edytuj imię"
+              >
+                ✎
+              </button>
+            </div>
+          ) : (
+            <>
+              <label className="field">
+                <span>Jak masz na imię?</span>
+                <input
+                  value={nameDraft}
+                  onChange={(event) => setNameDraft(event.target.value.slice(0, 20))}
+                  placeholder="Np. Ania"
+                />
+              </label>
+              <div className="buttonRow">
+                <button className="ghostButton small" onClick={handleSaveName}>
+                  Zapisz
+                </button>
+                {childName ? (
+                  <button
+                    className="ghostButton small"
+                    onClick={() => {
+                      setNameDraft(childName);
+                      setIsEditingName(false);
+                    }}
+                  >
+                    Anuluj
+                  </button>
+                ) : null}
+              </div>
+            </>
+          )}
         </div>
 
         <div className="card stack focusCard">
-          <div className="sectionTitleRow">
-            <div>
-              <p className="eyebrow">Teraz ćwiczysz</p>
-              <h2>Ścieżka {activePath.label}</h2>
-            </div>
-            <div className="stars" aria-label={`${activePath.stars} gwiazdki`}>
-              {renderStars(activePath.stars)}
-            </div>
-          </div>
+          <p className="eyebrow">Teraz ćwiczysz</p>
+          <h2 className="focusTitle">Ścieżka {activePath.label}</h2>
           <div className="progressBar largeBar" aria-hidden="true">
             <span className="progressFill" style={{ width: `${Math.round((activePath.steps / activePath.totalSteps) * 100)}%` }} />
           </div>
           <div className="progressSummaryRow">
             <p className="bigProgress">{activePath.steps}/{activePath.totalSteps}</p>
-            <p className="statusLine">Opanowane {activePath.masteredFacts} z {activePath.totalFacts} działań</p>
+            <p className="statusLine">Do końca zostało {activePath.totalSteps - activePath.steps} kroków</p>
           </div>
-          <p className="pathHelp">Najpierw wrócą działania rozpoczęte wcześniej. Potem pojawią się nowe.</p>
+          <div className="rulesCard">
+            <p className="name">Jak zaliczyć ścieżkę?</p>
+            <p className="statusLine">W ścieżce jest 10 działań.</p>
+            <p className="statusLine">Każde działanie trzeba zrobić dobrze 3 razy.</p>
+            <p className="statusLine">Dobra odpowiedź dodaje 1 krok. Pomyłka cofa o 1 krok.</p>
+          </div>
           <button className="primaryButton" onClick={startRun}>
             {activePath.steps === 0 ? "Start" : "Kontynuuj"}
           </button>
@@ -333,31 +362,35 @@ export default function App() {
           <div className="progressBar" aria-hidden="true">
             <span className="progressFill overallFill" style={{ width: `${Math.round((overallSteps / (APP_CONFIG.pathCount * APP_CONFIG.pathTotalSteps)) * 100)}%` }} />
           </div>
+          <p className="statusLine">Jesteś teraz na ścieżce {activePath.label}. Kolejne ścieżki odblokowują się po ukończeniu bieżącej.</p>
+        </div>
+
+        <div className="card stack">
+          <div className="sectionTitleRow">
+            <h2>Ścieżki</h2>
+            <p className="statusLine">10 ścieżek po 10 działań</p>
+          </div>
           <div className="pathList">
             {pathSummaries.map((path) => (
               <article
                 key={path.multiplier}
                 className={`pathRow ${path.active ? "active" : ""} ${path.completed ? "completed" : ""} ${!path.unlocked ? "locked" : ""}`}
               >
-                <div className="pathMarker" aria-hidden="true">
-                  {!path.unlocked ? "🔒" : path.completed ? "★" : "🚀"}
-                </div>
                 <div className="pathContent">
-                  <div className="sectionTitleRow">
-                    <p className="name">{path.label}</p>
-                    <p className="rank">{path.steps}/{path.totalSteps}</p>
+                  <div className="sectionTitleRow pathRowHeader">
+                    <p className="name">Ścieżka {path.label}</p>
+                    <div className="pathHeaderMeta">
+                      {path.active ? <span className="activePathBadge">Ćwiczysz teraz</span> : null}
+                      <p className="rank">{path.steps}/{path.totalSteps}</p>
+                    </div>
                   </div>
                   <div className="progressBar miniBar" aria-hidden="true">
                     <span className="progressFill" style={{ width: `${Math.round((path.steps / path.totalSteps) * 100)}%` }} />
                   </div>
-                  <div className="sectionTitleRow">
-                    <div className="stars compactStars" aria-hidden="true">
-                      {renderStars(path.stars)}
-                    </div>
-                    <p className="rank">
-                      {!path.unlocked ? "Odblokuje się później" : path.completed ? "Ścieżka ukończona" : path.active ? "Tu jesteś teraz" : "Odblokowana"}
-                    </p>
-                  </div>
+                  <p className="rank">Opanowane działania: {path.masteredFacts}/{path.totalFacts}</p>
+                  <p className="rank">
+                    {!path.unlocked ? "Ta ścieżka odblokuje się później." : path.completed ? "Ta ścieżka jest ukończona." : path.active ? "To jest Twoja aktualna ścieżka." : "Ta ścieżka jest już odblokowana."}
+                  </p>
                 </div>
               </article>
             ))}
@@ -378,13 +411,23 @@ export default function App() {
             <p className="eyebrow">Ścieżka ×{game.pathMultiplier}</p>
             <p className="timer">{Math.ceil(game.remainingMs / 1000)}s</p>
           </div>
-          <div className="hudMetaRow">
-            <p>Zadanie {game.currentIndex + 1} z {game.queue.length}</p>
-            <p>{currentTask.phase === "review" ? "Powtórka" : "Nowe działanie"}</p>
+          <div className="phaseBannerWrap">
+            <div className={`phaseBanner ${currentTask.phase === "review" ? "review" : "fresh"}`}>
+              <span className="phasePill">{currentTask.phase === "review" ? "Powtórka" : "Nowe"}</span>
+              <p className="phaseText">
+                {currentTask.phase === "review"
+                  ? "To działanie wróciło, żeby lepiej je zapamiętać."
+                  : "To nowe działanie w tej ścieżce."}
+              </p>
+            </div>
           </div>
           <div className="hudMetaRow">
+            <p>Zadanie {game.currentIndex + 1} z {game.queue.length}</p>
             <p>Stan działania: {currentTaskStep}/3</p>
+          </div>
+          <div className="hudMetaRow">
             <p>{describeStep(currentTaskStep)}</p>
+            <p>{currentTaskStep}/3</p>
           </div>
         </div>
 
@@ -452,7 +495,6 @@ export default function App() {
           <p className="subtitle">Czas tej rundy: <strong>{formatMs(lastResult.totalTimeMs)}</strong></p>
           <div className="focusSummary">
             <p className="bigProgress">×{lastResult.pathMultiplier} • {lastResult.steps}/{lastResult.totalSteps}</p>
-            <div className="stars" aria-hidden="true">{renderStars(lastResult.stars)}</div>
             <p className="statusLine">Opanowane {lastResult.masteredFacts} z {lastResult.totalFacts} działań</p>
           </div>
           {lastResult.completedPath && nextPathLabel ? (
@@ -493,14 +535,3 @@ export default function App() {
   );
 }
 
-function renderStars(filled: number): JSX.Element {
-  return (
-    <>
-      {[0, 1, 2].map((index) => (
-        <span key={index} className={`star ${index < filled ? "filled" : ""}`}>
-          ★
-        </span>
-      ))}
-    </>
-  );
-}
