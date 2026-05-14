@@ -347,6 +347,9 @@ export default function App() {
             <p className="statusLine">Każde trzeba zrobić dobrze 3 razy.</p>
             <p className="statusLine">Pomyłka cofa o 1 krok.</p>
           </div>
+          <button className="primaryButton" onClick={startRun}>
+            Rozpocznij
+          </button>
           <div className="pathList">
             {pathSummaries.map((path) => (
               <article
