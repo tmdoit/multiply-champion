@@ -376,7 +376,12 @@ export default function App() {
       return renderHome();
     }
     return (
-      <section className="screen gameScreen">
+      <section className="screen gameScreen compactGameScreen">
+        <div className="gameTopBar">
+          <button className="ghostButton small backButton" onClick={cancelRun}>
+            Wróć
+          </button>
+        </div>
         <div className="hudCard compactHudCard">
           <div className="hudSummaryRow">
             <div className="hudMetric">
@@ -403,11 +408,7 @@ export default function App() {
           </div>
         </div>
 
-        <button className="ghostButton small" onClick={cancelRun}>
-          Wróć
-        </button>
-
-        <div className="problemCard">
+        <div className="problemCard compactProblemCard">
           <p className="problem">{currentTask.left} × {currentTask.right}</p>
           <div className="answerBox">{game.input || "?"}</div>
           {game.feedback ? (
@@ -456,12 +457,17 @@ export default function App() {
     return (
       <section className="screen resultsScreen">
         <div className={`card stack celebrateCard ${lastResult.completedPath ? "successGlow" : ""}`}>
+          <div className="celebrateBurst" aria-hidden="true">
+            <span>✨</span>
+            <span>🎉</span>
+            <span>⭐</span>
+          </div>
           <p className="eyebrow">Podsumowanie</p>
           <h2>
             {lastResult.fullyCompleted
               ? `Okrążenie ${lastResult.completedLapCount} ukończone!`
               : lastResult.completedPath
-                ? `Ścieżka ×${lastResult.pathMultiplier} ukończona!`
+                ? `Brawo! Ścieżka ×${lastResult.pathMultiplier} ukończona!`
                 : `Dobra robota${lastResult.childName ? `, ${lastResult.childName}` : ""}!`}
           </h2>
           <p className="subtitle">Czas tej rundy: <strong>{formatMs(lastResult.totalTimeMs)}</strong></p>
@@ -478,14 +484,9 @@ export default function App() {
           {!lastResult.completedPath && !lastResult.fullyCompleted ? (
             <p className="pathHelp">Wracaj do tej ścieżki. Rozpoczęte działania pojawią się najpierw.</p>
           ) : null}
-          <div className="buttonGrid singleOnMobile">
-            <button className="primaryButton" onClick={startRun}>
-              {lastResult.fullyCompleted ? "Nowe okrążenie" : "Dalej"}
-            </button>
-            <button className="ghostButton" onClick={() => setScreen("home")}>
-              Strona główna
-            </button>
-          </div>
+          <button className="primaryButton" onClick={() => setScreen("home")}>
+            Wróć do menu
+          </button>
         </div>
       </section>
     );
