@@ -1,4 +1,5 @@
-import type { FactKey, FactStats, FactTask, ProgressSnapshot } from "./types";
+import { APP_CONFIG } from "./constants";
+import type { FactKey, FactProgress, PathSummary, SessionTask } from "./types";
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -17,97 +18,110 @@ export function formatMs(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
 }
 
-export function normalizeFactStats(stats?: FactStats): FactStats {
+export function getFactStep(progress: FactProgress, factKey: FactKey): number {
+  return clamp(progress[factKey] ?? 0, 0, APP_CONFIG.stepsPerFact);
+}
+
+export function updateFactStep(progress: FactProgress, factKey: FactKey, delta: number): FactProgress {
+  const nextStep = clamp(getFactStep(progress, factKey) + delta, 0, APP_CONFIG.stepsPerFact);
   return {
-    attempts: stats?.attempts ?? 0,
-    correct: stats?.correct ?? 0,
-    wrong: stats?.wrong ?? 0,
-    averageMs: stats?.averageMs ?? 0,
-    lastAnsweredAt: stats?.lastAnsweredAt ?? null
+    ...progress,
+    [factKey]: nextStep
   };
 }
 
-export function mergeProgressSnapshots(
-  base: ProgressSnapshot,
-  incoming: ProgressSnapshot
-): ProgressSnapshot {
-  const merged: ProgressSnapshot = { ...base };
-  for (const [key, incomingStats] of Object.entries(incoming)) {
-    const current = normalizeFactStats(merged[key as FactKey]);
-    const next = normalizeFactStats(incomingStats);
-    const attempts = current.attempts + next.attempts;
-    const averageMs =
-      attempts === 0
-        ? 0
-        : Math.round(
-            (current.averageMs * current.attempts + next.averageMs * next.attempts) / attempts
-          );
+export function getPathSummary(progress: FactProgress, multiplier: number, activeMultiplier: number): PathSummary {
+  let steps = 0;
+  let masteredFacts = 0;
 
-    merged[key as FactKey] = {
-      attempts,
-      correct: current.correct + next.correct,
-      wrong: current.wrong + next.wrong,
-      averageMs,
-      lastAnsweredAt:
-        [current.lastAnsweredAt, next.lastAnsweredAt].filter(Boolean).sort().slice(-1)[0] ?? null
+  for (let right = 1; right <= APP_CONFIG.factsPerPath; right += 1) {
+    const step = getFactStep(progress, createFactKey(multiplier, right));
+    steps += step;
+    if (step >= APP_CONFIG.stepsPerFact) {
+      masteredFacts += 1;
+    }
+  }
+
+  return {
+    multiplier,
+    label: `×${multiplier}`,
+    steps,
+    totalSteps: APP_CONFIG.pathTotalSteps,
+    stars: Math.min(3, Math.floor(steps / APP_CONFIG.stepsPerStar)),
+    masteredFacts,
+    totalFacts: APP_CONFIG.factsPerPath,
+    unlocked: multiplier <= activeMultiplier,
+    completed: steps >= APP_CONFIG.pathTotalSteps,
+    active: multiplier === activeMultiplier
+  };
+}
+
+export function getActiveMultiplier(progress: FactProgress): number {
+  for (let multiplier = 1; multiplier <= APP_CONFIG.pathCount; multiplier += 1) {
+    const summary = getPathSummary(progress, multiplier, multiplier);
+    if (!summary.completed) {
+      return multiplier;
+    }
+  }
+  return APP_CONFIG.pathCount;
+}
+
+export function getAllPathSummaries(progress: FactProgress): PathSummary[] {
+  const activeMultiplier = getActiveMultiplier(progress);
+  return Array.from({ length: APP_CONFIG.pathCount }, (_, index) =>
+    getPathSummary(progress, index + 1, activeMultiplier)
+  );
+}
+
+export function getOverallSteps(progress: FactProgress): number {
+  return getAllPathSummaries(progress).reduce((sum, path) => sum + path.steps, 0);
+}
+
+export function buildSessionQueue(progress: FactProgress, multiplier: number): SessionTask[] {
+  const review: SessionTask[] = [];
+  const fresh: SessionTask[] = [];
+
+  for (let right = 1; right <= APP_CONFIG.factsPerPath; right += 1) {
+    const step = getFactStep(progress, createFactKey(multiplier, right));
+    if (step >= APP_CONFIG.stepsPerFact) {
+      continue;
+    }
+    const task: SessionTask = {
+      left: multiplier,
+      right,
+      answer: multiplier * right,
+      key: createFactKey(multiplier, right),
+      phase: step === 0 ? "new" : "review",
+      stepBefore: step
     };
-  }
-  return merged;
-}
-
-export function buildFactPool(maxResult: number, factorLimit: number | null): FactTask[] {
-  const pool: FactTask[] = [];
-  const maxFactor = factorLimit ?? maxResult;
-  for (let left = 1; left <= maxFactor; left += 1) {
-    for (let right = 1; right <= maxFactor; right += 1) {
-      const answer = left * right;
-      if (answer <= maxResult) {
-        pool.push({
-          left,
-          right,
-          answer,
-          key: createFactKey(left, right)
-        });
-      }
+    if (step === 0) {
+      fresh.push(task);
+    } else {
+      review.push(task);
     }
   }
-  return pool;
+
+  return [...shuffle(review), ...shuffle(fresh)];
 }
 
-export function pickWeightedTasks(
-  pool: FactTask[],
-  count: number,
-  progress: ProgressSnapshot
-): FactTask[] {
-  const selected: FactTask[] = [];
-  const available = [...pool];
-
-  while (selected.length < count && available.length > 0) {
-    const weights = available.map((task) => {
-      const stats = normalizeFactStats(progress[task.key]);
-      const successRate = stats.attempts === 0 ? 0 : stats.correct / stats.attempts;
-      const weaknessBoost = 1 + stats.wrong * 0.7 + (1 - successRate) * 2;
-      const masteryPenalty = Math.max(0.35, 1 - stats.correct * 0.08);
-      const speedBoost = stats.averageMs > 8000 ? 1.25 : 1;
-      return weaknessBoost * masteryPenalty * speedBoost;
-    });
-
-    const index = weightedRandomIndex(weights);
-    selected.push(available[index]);
-    available.splice(index, 1);
+export function describeStep(step: number): string {
+  if (step <= 0) {
+    return "nie ruszona";
   }
-
-  return selected;
+  if (step === 1) {
+    return "zaczynam umieć";
+  }
+  if (step === 2) {
+    return "prawie umiem";
+  }
+  return "opanowana";
 }
 
-function weightedRandomIndex(weights: number[]): number {
-  const total = weights.reduce((sum, weight) => sum + weight, 0);
-  let threshold = Math.random() * total;
-  for (let index = 0; index < weights.length; index += 1) {
-    threshold -= weights[index];
-    if (threshold <= 0) {
-      return index;
-    }
+function shuffle<T>(items: T[]): T[] {
+  const next = [...items];
+  for (let index = next.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [next[index], next[swapIndex]] = [next[swapIndex], next[index]];
   }
-  return weights.length - 1;
+  return next;
 }
