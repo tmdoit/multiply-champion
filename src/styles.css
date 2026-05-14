@@ -616,13 +616,46 @@ input {
     justify-content: flex-end;
   }
 
-  .hudSummaryRow {
-    grid-template-columns: 1fr;
+  .compactHudCard {
+    padding: 0.85rem 0.9rem;
   }
 
-  .hudStatusRow,
+  .hudSummaryRow {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.45rem;
+  }
+
+  .hudMetric {
+    padding: 0.55rem 0.4rem;
+  }
+
+  .hudMetric strong {
+    font-size: 0.98rem;
+  }
+
+  .hudLabel {
+    font-size: 0.66rem;
+  }
+
+  .hudStatusRow {
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: nowrap;
+    gap: 0.5rem;
+  }
+
   .hudStateText {
-    align-items: start;
-    justify-content: start;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    font-size: 0.82rem;
+    white-space: nowrap;
+  }
+
+  .phasePill {
+    min-height: 1.7rem;
+    padding: 0 0.55rem;
+    font-size: 0.72rem;
+    white-space: nowrap;
   }
 }
