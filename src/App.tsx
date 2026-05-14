@@ -334,14 +334,19 @@ export default function App() {
         </div>
 
         <div className="card stack focusCard">
-          <p className="eyebrow">Teraz ćwiczysz</p>
-          <h2 className="focusTitle">Ścieżka {activePath.label}</h2>
+          <div className="focusHeaderRow">
+            <div className="focusHeaderCopy">
+              <span className="focusLabel">Teraz ćwiczysz</span>
+              <h2 className="focusTitle">Ścieżka {activePath.label}</h2>
+            </div>
+            <p className="focusRemaining">Zostało {activePath.totalSteps - activePath.steps}</p>
+          </div>
           <div className="progressBar largeBar" aria-hidden="true">
             <span className="progressFill" style={{ width: `${Math.round((activePath.steps / activePath.totalSteps) * 100)}%` }} />
           </div>
-          <div className="progressSummaryRow">
+          <div className="progressSummaryRow compactSummaryRow">
             <p className="bigProgress">{activePath.steps}/{activePath.totalSteps}</p>
-            <p className="statusLine">Do końca zostało {activePath.totalSteps - activePath.steps} kroków</p>
+            <p className="statusLine">kroków w tej ścieżce</p>
           </div>
           <div className="rulesCard">
             <p className="name">Jak zaliczyć ścieżkę?</p>

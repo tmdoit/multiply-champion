@@ -192,8 +192,40 @@ input {
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.98) 0%, rgba(255, 243, 231, 0.98) 100%);
 }
 
+.focusHeaderRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 0.9rem;
+}
+
+.focusHeaderCopy {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.focusLabel {
+  color: var(--accent-dark);
+  font-size: 0.82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 .focusTitle {
-  margin: 0.2rem 0 0;
+  margin: 0;
+}
+
+.focusRemaining {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 900;
+  color: var(--accent-dark);
+  white-space: nowrap;
+}
+
+.compactSummaryRow {
+  align-items: center;
 }
 
 .nameCard {
@@ -216,7 +248,7 @@ input {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 0.9rem;
-  align-items: end;
+  align-items: center;
 }
 
 .nameField {
@@ -564,21 +596,24 @@ input {
   }
 
   .sectionTitleRow,
-  .buttonRow,
-  .progressSummaryRow,
-  .savedNameRow,
-  .nameEditRow {
+  .buttonRow {
     align-items: start;
     flex-direction: column;
   }
 
+  .savedNameRow,
+  .focusHeaderRow,
+  .progressSummaryRow {
+    align-items: center;
+  }
+
   .nameEditRow {
-    display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
   }
 
   .nameActions {
-    justify-content: start;
+    justify-content: flex-end;
   }
 
   .hudSummaryRow {
