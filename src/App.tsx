@@ -28,14 +28,18 @@ import { HOST_CONFIG } from "./constants";
 import {
   clearConfirmedAccount,
   loadConfirmedAccount,
+  loadDailyJourneySteps,
   loadLocalLeaderboard,
+  loadSoundEnabled,
   loadPendingProgress,
   loadPendingResults,
   loadProgress,
   loadSelectedGroupId,
   loadSelectedModeId,
   saveConfirmedAccount,
+  saveDailyJourneySteps,
   saveLocalLeaderboard,
+  saveSoundEnabled,
   savePendingProgress,
   savePendingResults,
   saveProgress,
@@ -52,6 +56,7 @@ import type {
   GroupMember,
   GroupSummary,
   InvitePreview,
+  JourneyProgress,
   LeaderboardEntry,
   ModeSummary,
   PlayerStats,
@@ -60,7 +65,7 @@ import type {
   ProgressSnapshot,
   Screen
 } from "./types";
-import { buildFactPool, formatMs, mergeProgressSnapshots, normalizeFactStats, pickWeightedTasks } from "./utils";
+import { buildFactPool, calculateJourneyProgress, formatMs, getFactMasteryStep, mergeProgressSnapshots, normalizeFactStats, pickWeightedTasks } from "./utils";
 
 type AuthMode = "register" | "login";
 
@@ -109,6 +114,9 @@ export default function App() {
   const [remoteBoard, setRemoteBoard] = useState<LeaderboardEntry[]>([]);
   const [activity, setActivity] = useState<ActivityEvent[]>([]);
   const [stats, setStats] = useState<PlayerStats | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(() => loadSoundEnabled());
+  const [dailyJourneySteps, setDailyJourneySteps] = useState(0);
+  const [journeyMoment, setJourneyMoment] = useState<{ kind: "step" | "star"; id: number } | null>(null);
   const [chatMessages, setChatMessages] = useState<GroupChatMessage[]>([]);
   const [chatInput, setChatInput] = useState("");
   const [members, setMembers] = useState<GroupMember[]>([]);
@@ -129,6 +137,7 @@ export default function App() {
   const [latestInviteUrl, setLatestInviteUrl] = useState<string | null>(null);
   const [popupMessage, setPopupMessage] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
 
   const selectedMode = useMemo(
     () => modes.find((mode) => mode.id === selectedModeId) ?? modes.find((mode) => mode.isDefault) ?? null,
@@ -139,12 +148,20 @@ export default function App() {
     [groups, selectedGroupId]
   );
   const currentTask = game ? game.queue[game.currentIndex] : null;
+  const journey = useMemo<JourneyProgress | null>(
+    () => calculateJourneyProgress(selectedMode, progress, dailyJourneySteps),
+    [selectedMode, progress, dailyJourneySteps]
+  );
   const selectedGroupMemberCount = selectedGroup ? members.filter((member) => member).length : 0;
   const ownerMustStayUntilAlone = selectedGroup?.role === "owner" && selectedGroup.id !== "world" && selectedGroupMemberCount > 1;
 
   useEffect(() => {
     saveLocalLeaderboard(localBoard);
   }, [localBoard]);
+
+  useEffect(() => {
+    saveSoundEnabled(soundEnabled);
+  }, [soundEnabled]);
 
   useEffect(() => {
     if (selectedGroupId) {
@@ -185,6 +202,33 @@ export default function App() {
       }
     }
   }, [account, selectedModeId]);
+
+  useEffect(() => {
+    if (account && selectedModeId) {
+      setDailyJourneySteps(loadDailyJourneySteps(account.accountId, selectedModeId));
+    } else {
+      setDailyJourneySteps(0);
+    }
+  }, [account, selectedModeId]);
+
+  useEffect(() => {
+    if (!journeyMoment) {
+      return;
+    }
+    const timeoutId = window.setTimeout(() => setJourneyMoment(null), journeyMoment.kind === "star" ? 2200 : 1400);
+    return () => window.clearTimeout(timeoutId);
+  }, [journeyMoment]);
+
+
+  useEffect(() => {
+    if (!journeyMoment) {
+      return;
+    }
+    if (!soundEnabled) {
+      return;
+    }
+    void playCelebrationSound(audioContextRef, journeyMoment.kind === "star" ? "star" : "step");
+  }, [journeyMoment, soundEnabled]);
 
   useEffect(() => {
     if (account && selectedGroupId && selectedModeId) {
@@ -275,11 +319,22 @@ export default function App() {
   }, [screen, account, selectedGroupId]);
 
   useEffect(() => {
-    if (screen !== "stats" || !account || !selectedModeId || !navigator.onLine || !hasApi()) {
+    if (!["home", "stats", "results"].includes(screen) || !account || !selectedModeId || !navigator.onLine || !hasApi()) {
       return;
     }
     void refreshStats(account, selectedModeId);
   }, [screen, account, selectedModeId]);
+
+
+  useEffect(() => {
+    if (screen !== "results" || !lastResult?.isNewBest) {
+      return;
+    }
+    if (!soundEnabled) {
+      return;
+    }
+    void playCelebrationSound(audioContextRef, "record");
+  }, [screen, lastResult?.isNewBest, soundEnabled]);
 
   useEffect(() => {
     const token = new URLSearchParams(window.location.search).get("invite");
@@ -774,6 +829,15 @@ export default function App() {
       const existing = normalizeFactStats(current[task.key]);
       const attempts = existing.attempts + 1;
       const answeredAt = new Date().toISOString();
+      const previousStep = getFactMasteryStep(existing);
+      const nextFactStats = {
+        attempts,
+        correct: existing.correct + (correct ? 1 : 0),
+        wrong: existing.wrong + (correct ? 0 : 1),
+        averageMs: Math.round((existing.averageMs * existing.attempts + elapsedMs) / attempts),
+        lastAnsweredAt: answeredAt
+      };
+      const nextStep = getFactMasteryStep(nextFactStats);
       const delta: ProgressSnapshot = {
         [task.key]: {
           attempts: 1,
@@ -783,15 +847,17 @@ export default function App() {
           lastAnsweredAt: answeredAt
         }
       };
+      if (nextStep > previousStep) {
+        setJourneyMoment({ kind: nextStep >= 3 ? "star" : "step", id: Date.now() });
+        setDailyJourneySteps((currentDailySteps) => {
+          const nextDailySteps = currentDailySteps + (nextStep - previousStep);
+          saveDailyJourneySteps(account.accountId, selectedModeId, nextDailySteps);
+          return nextDailySteps;
+        });
+      }
       const next = {
         ...current,
-        [task.key]: {
-          attempts,
-          correct: existing.correct + (correct ? 1 : 0),
-          wrong: existing.wrong + (correct ? 0 : 1),
-          averageMs: Math.round((existing.averageMs * existing.attempts + elapsedMs) / attempts),
-          lastAnsweredAt: answeredAt
-        }
+        [task.key]: nextFactStats
       };
       queueProgressSync(account.accountId, selectedModeId, delta);
       return next;
@@ -943,6 +1009,185 @@ export default function App() {
     );
   }
 
+  function renderJourneyPanel(showPathMap: boolean): JSX.Element | null {
+    if (!journey) {
+      return null;
+    }
+    const pathPercent = Math.round((journey.currentPathSteps / journey.currentPathTotalSteps) * 100);
+    const totalPercent = Math.max(6, journey.percentComplete);
+    const dailyProgress = Math.min(journey.dailyGoalProgress, journey.dailyGoalSteps);
+    const dailyPercent = Math.min(100, Math.round((dailyProgress / journey.dailyGoalSteps) * 100));
+    const nextGoalText =
+      journey.currentPathStars >= 3
+        ? `Planeta ${journey.currentPathLabel} jest gotowa.`
+        : `Jeszcze ${journey.stepsToNextStar} ${formatPolishStepWord(journey.stepsToNextStar)} do gwiazdki.`;
+
+    return (
+      <div
+        className={`card stack journeyCard ${showPathMap ? "journeyCardDetailed" : ""} ${journeyMoment?.kind === "step" ? "journeyStepBoost" : ""} ${journeyMoment?.kind === "star" ? "journeyStarBurst" : ""}`.trim()}
+      >
+        <div className="journeyHeader">
+          <p className="eyebrow">Kosmiczna ścieżka</p>
+          <h2>Ćwiczysz {journey.currentPathLabel}</h2>
+          <p className="subtitle">Umiesz już {journey.totalMasteredFacts} z {journey.totalFacts} działań.</p>
+        </div>
+
+        {journeyMoment ? (
+          <div className={`journeySparkles ${journeyMoment.kind === "star" ? "star" : "step"}`} aria-hidden="true">
+            <span>✦</span>
+            <span>★</span>
+            <span>✦</span>
+            <span>★</span>
+          </div>
+        ) : null}
+        <div className="journeyHeroPanel">
+          <div className={`journeyPlanet ${journeyMoment?.kind === "star" ? "planetCelebrate" : ""}`} aria-hidden="true">
+            <span>{journey.currentPathLabel}</span>
+          </div>
+          <div className="journeyTrackWrap">
+            <div className="journeyTrackLine">
+              <span className="journeyTrackFill" style={{ width: `${pathPercent}%` }} />
+            </div>
+            <div className={`journeyRocket ${journeyMoment?.kind === "step" ? "rocketBoost" : ""} ${journeyMoment?.kind === "star" ? "rocketCelebrate" : ""}`.trim()} style={{ left: `calc(${pathPercent}% - 1.7rem)` }} aria-hidden="true">
+              🚀
+            </div>
+            <div className={`journeyGoalStar ${journeyMoment?.kind === "star" ? "goalStarCelebrate" : ""}`.trim()} aria-hidden="true">★</div>
+          </div>
+        </div>
+
+        <div className="journeyStatsRow">
+          <article className="journeyMiniCard">
+            <p className="rank">Lot po planecie</p>
+            <p className="journeyPrimaryValue">{journey.currentPathSteps} z {journey.currentPathTotalSteps}</p>
+            <p className="subtitle">{nextGoalText}</p>
+          </article>
+          <article className="journeyMiniCard">
+            <p className="rank">Droga do mistrza</p>
+            <p className="journeyPrimaryValue">{journey.percentComplete}%</p>
+            <p className="subtitle">Opanowane {journey.totalMasteredFacts} działania.</p>
+          </article>
+        </div>
+
+        <div className="journeyStarsPanel">
+          <div className={`journeyStars ${journeyMoment?.kind === "star" ? "starsCelebrate" : ""}`.trim()} aria-label={`Gwiazdki ${journey.currentPathStars} z 3`}>
+            {[0, 1, 2].map((index) => (
+              <span key={index} className={`journeyStar ${index < journey.currentPathStars ? "filled" : ""}`}>
+                ★
+              </span>
+            ))}
+          </div>
+          <p className="subtitle">Na tej planecie: {journey.currentPathMasteredFacts} z {journey.currentPathTotalFacts} działań.</p>
+        </div>
+
+        <div className="dailyGoalCard">
+          <div className="sectionTitleRow">
+            <p className="name">Cel na dziś</p>
+            <p className="rank">{dailyProgress} z {journey.dailyGoalSteps} iskier</p>
+          </div>
+          <div className="dailyGoalBar">
+            <span className="dailyGoalFill" style={{ width: `${dailyPercent}%` }} />
+          </div>
+          <p className="subtitle">Każdy dobry krok pcha rakietę dalej.</p>
+        </div>
+
+        <div className="journeyFactField">
+          <div className="sectionTitleRow">
+            <p className="name">Orbity planety {journey.currentPathLabel}</p>
+            <p className="rank">Każda kulka to jedno działanie</p>
+          </div>
+          <div className="journeyFactsGrid">
+            {journey.currentPathFacts.map((fact) => (
+              <article key={fact.factKey} className={`journeyFactBubble step-${fact.steps}`}>
+                <p className="journeyFactValue">{fact.label}</p>
+                <p className="journeyFactLevel">{fact.steps}/{fact.maxSteps}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        {showPathMap ? (
+          <div className="journeyPathMap">
+            <div className="sectionTitleRow">
+              <p className="name">Cała mapa</p>
+              <p className="rank">10 planet do zdobycia</p>
+            </div>
+            <div className="journeyPathGrid">
+              {journey.paths.map((path) => (
+                <article key={path.multiplier} className={`journeyPathTile ${path.multiplier === journey.currentPathMultiplier ? "active" : ""} ${path.isComplete ? "complete" : ""}`}>
+                  <div className="sectionTitleRow pathTileHeader">
+                    <p className="name">{path.label}</p>
+                    <p className="rank">{path.steps}/{path.totalSteps}</p>
+                  </div>
+                  <div className="journeyStars compactStars" aria-hidden="true">
+                    {[0, 1, 2].map((index) => (
+                      <span key={index} className={`journeyStar ${index < path.stars ? "filled" : ""}`}>
+                        ★
+                      </span>
+                    ))}
+                  </div>
+                  <p className="subtitle">Opanowane {path.masteredFacts}/{path.totalFacts}</p>
+                </article>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="journeyModeBar" aria-hidden="true">
+          <span className="journeyModeBarFill" style={{ width: `${totalPercent}%` }} />
+        </div>
+      </div>
+    );
+  }
+
+  function renderModeFocusPanel(): JSX.Element {
+    return (
+      <div className="card stack journeyCard modeFocusCard">
+        <div className="journeyHeader">
+          <p className="eyebrow">Szybki lot</p>
+          <h2>{selectedMode?.label ?? "Tryb"}</h2>
+          <p className="subtitle">W tym trybie ścigasz swój najlepszy czas i ćwiczysz bez kosmicznej mapy.</p>
+        </div>
+        <div className="journeyStatsRow">
+          <article className="journeyMiniCard">
+            <p className="rank">Najlepszy czas</p>
+            <p className="journeyPrimaryValue">{stats?.bestTimeMs != null ? formatMs(stats.bestTimeMs) : "-"}</p>
+          </article>
+          <article className="journeyMiniCard">
+            <p className="rank">Rozegrane gry</p>
+            <p className="journeyPrimaryValue">{stats?.gamesPlayed ?? 0}</p>
+          </article>
+        </div>
+      </div>
+    );
+  }
+
+  function renderJourneyResultSummary(): JSX.Element | null {
+    if (!journey) {
+      return null;
+    }
+    const progressPercent = Math.round((journey.currentPathSteps / journey.currentPathTotalSteps) * 100);
+    return (
+      <div className={`journeyResultCard softCard ${journeyMoment?.kind === "step" ? "journeyStepBoost" : ""} ${journeyMoment?.kind === "star" ? "journeyStarBurst" : ""}`.trim()}>
+        <div className="sectionTitleRow">
+          <p className="name">Rakieta leci dalej po {journey.currentPathLabel}</p>
+          <div className="journeyStars compactStars" aria-hidden="true">
+            {[0, 1, 2].map((index) => (
+              <span key={index} className={`journeyStar ${index < journey.currentPathStars ? "filled" : ""}`}>
+                ★
+              </span>
+            ))}
+          </div>
+        </div>
+        <div className="journeyModeBar" aria-hidden="true">
+          <span className="journeyModeBarFill" style={{ width: `${progressPercent}%` }} />
+        </div>
+        <p className="subtitle">
+          {journey.currentPathSteps} z {journey.currentPathTotalSteps} kroków • Umiesz {journey.totalMasteredFacts} z {journey.totalFacts} działań.
+        </p>
+      </div>
+    );
+  }
+
   function renderHome(): JSX.Element {
     return (
       <section className="screen">
@@ -952,84 +1197,100 @@ export default function App() {
           <p className="subtitle heroDescription">Wybierz grupę i tryb, a potem poprawiaj swój najlepszy wynik.</p>
         </div>
         {account ? (
-          <div className="card stack">
-            <p className="statusLine">
-              Zalogowano jako <strong>{account.childName}</strong>.
-            </p>
-            {invitePreview ? (
-              <div className="card stack softCard">
-                <p className="name">Zaproszenie do grupy: {displayGroupName(invitePreview.groupName, invitePreview.groupId)}</p>
-                <p className="statusLine">Zaproszenie dla: {invitePreview.invitedName}</p>
-                <p className="statusLine">
-                  Status: {translateInviteStatus(invitePreview.status)}. Wygasa: {new Date(invitePreview.expiresAt).toLocaleString("pl-PL")}
-                </p>
-                <label className="field">
-                  <span>Twoja nazwa w grupie</span>
-                  <input value={inviteDisplayName} onChange={(event) => setInviteDisplayName(event.target.value.slice(0, 40))} />
-                </label>
-                <button className="primaryButton" onClick={() => void handleAcceptInvite()}>
-                  Dołącz do grupy
+          <>
+            {journey ? renderJourneyPanel(false) : renderModeFocusPanel()}
+            <div className="card stack">
+              <p className="statusLine">
+                Zalogowano jako <strong>{account.childName}</strong>.
+              </p>
+              {invitePreview ? (
+                <div className="card stack softCard">
+                  <p className="name">Zaproszenie do grupy: {displayGroupName(invitePreview.groupName, invitePreview.groupId)}</p>
+                  <p className="statusLine">Zaproszenie dla: {invitePreview.invitedName}</p>
+                  <p className="statusLine">
+                    Status: {translateInviteStatus(invitePreview.status)}. Wygasa: {new Date(invitePreview.expiresAt).toLocaleString("pl-PL")}
+                  </p>
+                  <label className="field">
+                    <span>Twoja nazwa w grupie</span>
+                    <input value={inviteDisplayName} onChange={(event) => setInviteDisplayName(event.target.value.slice(0, 40))} />
+                  </label>
+                  <button className="primaryButton" onClick={() => void handleAcceptInvite()}>
+                    Dołącz do grupy
+                  </button>
+                </div>
+              ) : null}
+              <label className="field">
+                <span>Grupa</span>
+                <select value={selectedGroup?.id ?? ""} onChange={(event) => setSelectedGroupId(event.target.value)}>
+                  {groups.map((group) => (
+                    <option key={group.id} value={group.id}>
+                      {displayGroupName(group.name, group.id)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {selectedGroup && selectedGroup.id !== "world" ? (
+                <>
+                  <button className="ghostButton" onClick={() => setLeaveGroupPromptOpen(true)} disabled={ownerMustStayUntilAlone}>
+                    Opuść grupę
+                  </button>
+                  {ownerMustStayUntilAlone ? (
+                    <p className="statusLine">Właściciel może opuścić grupę dopiero, gdy zostanie w niej sam.</p>
+                  ) : null}
+                </>
+              ) : null}
+              <label className="field">
+                <span>Tryb</span>
+                <select value={selectedMode?.id ?? ""} onChange={(event) => setSelectedModeId(event.target.value)}>
+                  {modes.map((mode) => (
+                    <option key={mode.id} value={mode.id}>
+                      {mode.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="softCard localSettingsCard toggleRow">
+                <div>
+                  <p className="name">Dźwięk</p>
+                  <p className="rank">Krótki chime za krok, gwiazdkę i rekord.</p>
+                </div>
+                <button
+                  className={`ghostButton small soundToggleButton ${soundEnabled ? "active" : ""}`.trim()}
+                  onClick={() => setSoundEnabled((current) => !current)}
+                  aria-pressed={soundEnabled}
+                >
+                  {soundEnabled ? "Włączony" : "Wyłączony"}
                 </button>
               </div>
-            ) : null}
-            <label className="field">
-              <span>Grupa</span>
-              <select value={selectedGroup?.id ?? ""} onChange={(event) => setSelectedGroupId(event.target.value)}>
-                {groups.map((group) => (
-                  <option key={group.id} value={group.id}>
-                    {displayGroupName(group.name, group.id)}
-                  </option>
-                ))}
-              </select>
-            </label>
-            {selectedGroup && selectedGroup.id !== "world" ? (
-              <>
-                <button className="ghostButton" onClick={() => setLeaveGroupPromptOpen(true)} disabled={ownerMustStayUntilAlone}>
-                  Opuść grupę
+              <div className="buttonGrid">
+                <button className="primaryButton" onClick={startGame}>
+                  Start
                 </button>
-                {ownerMustStayUntilAlone ? (
-                  <p className="statusLine">Właściciel może opuścić grupę dopiero, gdy zostanie w niej sam.</p>
-                ) : null}
-              </>
-            ) : null}
-            <label className="field">
-              <span>Tryb</span>
-              <select value={selectedMode?.id ?? ""} onChange={(event) => setSelectedModeId(event.target.value)}>
-                {modes.map((mode) => (
-                  <option key={mode.id} value={mode.id}>
-                    {mode.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="buttonGrid">
-              <button className="primaryButton" onClick={startGame}>
-                Start
-              </button>
-              <button className="secondaryButton" onClick={() => setScreen("leaderboard")}>
-                Ranking
-              </button>
-              <button className="secondaryButton" onClick={() => setScreen("stats")}>
-                Statystyki
-              </button>
-              <button className="secondaryButton" onClick={() => setScreen("activity")}>
-                Aktywność
-              </button>
-              <button className="secondaryButton" onClick={() => setScreen("chat")}>
-                Czat
-              </button>
-              <button className="secondaryButton" onClick={() => { setScreen("group"); void refreshGroupManagement(); }}>
-                Grupa
-              </button>
-              <button className="secondaryButton" onClick={() => setGroupPromptOpen(true)}>
-                Nowa grupa
-              </button>
-              <button className="ghostButton" onClick={() => forceLogout("Wylogowano.")}>
-                Wyloguj
-              </button>
+                <button className="secondaryButton" onClick={() => setScreen("leaderboard")}>
+                  Ranking
+                </button>
+                <button className="secondaryButton" onClick={() => setScreen("stats")}>
+                  Statystyki
+                </button>
+                <button className="secondaryButton" onClick={() => setScreen("activity")}>
+                  Aktywność
+                </button>
+                <button className="secondaryButton" onClick={() => setScreen("chat")}>
+                  Czat
+                </button>
+                <button className="secondaryButton" onClick={() => { setScreen("group"); void refreshGroupManagement(); }}>
+                  Grupa
+                </button>
+                <button className="secondaryButton" onClick={() => setGroupPromptOpen(true)}>
+                  Nowa grupa
+                </button>
+                <button className="ghostButton" onClick={() => forceLogout("Wylogowano.")}>
+                  Wyloguj
+                </button>
+              </div>
+              <p className="statusLine">{syncStatus}</p>
             </div>
-            <p className="statusLine">{syncStatus}</p>
-          </div>
+          </>
         ) : (
           renderAccountGate()
         )}
@@ -1124,6 +1385,7 @@ export default function App() {
           {!lastResult.isNewBest ? (
             <p className="subtitle resultBestInfo">Twój najlepszy wynik nadal wynosi <strong>{formatMs(lastResult.bestTimeMs)}</strong>.</p>
           ) : null}
+          {renderJourneyResultSummary()}
           <div className="buttonGrid">
             <button className="primaryButton" onClick={startGame}>
               Zagraj jeszcze raz
@@ -1181,9 +1443,10 @@ export default function App() {
     const needsPracticeFacts = stats?.needsPracticeFacts ?? [];
     return (
       <section className="screen">
+        {journey ? renderJourneyPanel(true) : renderModeFocusPanel()}
         <div className="card stack">
           <div className="sectionTitleRow">
-            <h2>Statystyki</h2>
+            <h2>Więcej liczb</h2>
             <button className="ghostButton small" onClick={() => setScreen("home")}>
               Wstecz
             </button>
@@ -1584,4 +1847,81 @@ function translateInviteStatus(status: InvitePreview["status"]): string {
     return "usunięte";
   }
   return "oczekujące";
+}
+
+
+function formatPolishStepWord(value: number): string {
+  const abs = Math.abs(value);
+  const mod10 = abs % 10;
+  const mod100 = abs % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return "krok";
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return "kroki";
+  }
+  return "kroków";
+}
+
+
+type CelebrationSoundKind = "step" | "star" | "record";
+
+async function playCelebrationSound(
+  audioContextRef: { current: AudioContext | null },
+  kind: CelebrationSoundKind
+): Promise<void> {
+  try {
+    const AudioContextCtor = window.AudioContext || (window as typeof window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!AudioContextCtor) {
+      return;
+    }
+    const context = audioContextRef.current ?? new AudioContextCtor();
+    audioContextRef.current = context;
+    if (context.state === "suspended") {
+      await context.resume();
+    }
+
+    if (kind === "step") {
+      playTone(context, 587.33, 0, 0.09, 0.035, "triangle");
+      playTone(context, 783.99, 0.08, 0.11, 0.025, "sine");
+      return;
+    }
+    if (kind === "star") {
+      playTone(context, 659.25, 0, 0.12, 0.04, "triangle");
+      playTone(context, 783.99, 0.09, 0.14, 0.035, "triangle");
+      playTone(context, 987.77, 0.18, 0.18, 0.03, "sine");
+      return;
+    }
+    playTone(context, 659.25, 0, 0.12, 0.045, "triangle");
+    playTone(context, 783.99, 0.1, 0.12, 0.045, "triangle");
+    playTone(context, 987.77, 0.21, 0.16, 0.04, "triangle");
+    playTone(context, 1318.51, 0.34, 0.24, 0.035, "sine");
+  } catch {
+    // Sound is optional polish; ignore blocked playback contexts.
+  }
+}
+
+function playTone(
+  context: AudioContext,
+  frequency: number,
+  offsetSeconds: number,
+  durationSeconds: number,
+  volume: number,
+  type: OscillatorType
+): void {
+  const oscillator = context.createOscillator();
+  const gainNode = context.createGain();
+  const startAt = context.currentTime + offsetSeconds;
+  const endAt = startAt + durationSeconds;
+
+  oscillator.type = type;
+  oscillator.frequency.setValueAtTime(frequency, startAt);
+  gainNode.gain.setValueAtTime(0.0001, startAt);
+  gainNode.gain.exponentialRampToValueAtTime(volume, startAt + 0.02);
+  gainNode.gain.exponentialRampToValueAtTime(0.0001, endAt);
+
+  oscillator.connect(gainNode);
+  gainNode.connect(context.destination);
+  oscillator.start(startAt);
+  oscillator.stop(endAt + 0.02);
 }

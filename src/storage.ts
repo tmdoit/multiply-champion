@@ -27,6 +27,19 @@ function createScopedKey(baseKey: string, accountId: string | null, modeId: stri
   return `${baseKey}:${encodeURIComponent(accountId)}:${encodeURIComponent(modeId)}`;
 }
 
+function createTodayKey(): string {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = String(now.getMonth() + 1).padStart(2, "0");
+  const day = String(now.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+type DailyJourneyState = {
+  dayKey: string;
+  steps: number;
+};
+
 export function loadConfirmedAccount(): ConfirmedAccount | null {
   return readJson<ConfirmedAccount | null>(STORAGE_KEYS.account, null);
 }
@@ -89,4 +102,30 @@ export function loadPendingProgress(): PendingProgressSync[] {
 
 export function savePendingProgress(items: PendingProgressSync[]): void {
   writeJson(STORAGE_KEYS.pendingProgress, items);
+}
+
+export function loadDailyJourneySteps(accountId: string | null, modeId: string | null): number {
+  const key = createScopedKey(STORAGE_KEYS.journeyDaily, accountId, modeId);
+  if (!key) {
+    return 0;
+  }
+  const today = createTodayKey();
+  const state = readJson<DailyJourneyState | null>(key, null);
+  return state && state.dayKey === today ? state.steps : 0;
+}
+
+export function saveDailyJourneySteps(accountId: string | null, modeId: string | null, steps: number): void {
+  const key = createScopedKey(STORAGE_KEYS.journeyDaily, accountId, modeId);
+  if (!key) {
+    return;
+  }
+  writeJson<DailyJourneyState>(key, { dayKey: createTodayKey(), steps });
+}
+
+export function loadSoundEnabled(): boolean {
+  return readJson<boolean>(STORAGE_KEYS.soundEnabled, true);
+}
+
+export function saveSoundEnabled(enabled: boolean): void {
+  writeJson(STORAGE_KEYS.soundEnabled, enabled);
 }

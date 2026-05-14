@@ -1,21 +1,18 @@
 :root {
   font-family: "Trebuchet MS", "Avenir Next", sans-serif;
   color: #16304a;
-  background:
-    radial-gradient(circle at top left, rgba(255, 219, 171, 0.95), transparent 28%),
-    radial-gradient(circle at top right, rgba(255, 155, 113, 0.65), transparent 26%),
-    linear-gradient(180deg, #fff7eb 0%, #ffe6cc 100%);
+  background: linear-gradient(180deg, #09122b 0%, #102048 48%, #18356d 100%);
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --card: rgba(255, 252, 246, 0.86);
-  --border: rgba(22, 48, 74, 0.12);
-  --accent: #ff8a5b;
-  --accent-dark: #ef6d38;
-  --text-soft: #5f6f82;
-  --success: #2ea56c;
-  --danger: #d65252;
+  --card: rgba(255, 250, 241, 0.9);
+  --border: rgba(22, 48, 74, 0.14);
+  --accent: #ff9a66;
+  --accent-dark: #ffd65a;
+  --text-soft: #617387;
+  --success: #5fe0b2;
+  --danger: #ff7a7a;
 }
 
 * {
@@ -31,6 +28,26 @@ body,
 
 body {
   min-height: 100vh;
+  background:
+    radial-gradient(circle at 15% 12%, rgba(255, 214, 90, 0.22), transparent 18%),
+    radial-gradient(circle at 82% 8%, rgba(95, 224, 178, 0.18), transparent 16%),
+    radial-gradient(circle at 50% 115%, rgba(255, 122, 122, 0.2), transparent 28%),
+    linear-gradient(180deg, #09122b 0%, #102048 48%, #18356d 100%);
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.9) 0 1px, transparent 2px),
+    radial-gradient(circle at 30% 70%, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 60% 28%, rgba(255, 255, 255, 0.7) 0 1px, transparent 2px),
+    radial-gradient(circle at 78% 58%, rgba(255, 255, 255, 0.65) 0 1px, transparent 2px),
+    radial-gradient(circle at 92% 16%, rgba(255, 255, 255, 0.85) 0 1px, transparent 2px);
+  opacity: 0.7;
 }
 
 button,
@@ -56,6 +73,8 @@ select {
 }
 
 .appShell {
+  position: relative;
+  z-index: 1;
   width: min(100%, 36rem);
   margin: 0 auto;
   padding: 1rem;
@@ -384,6 +403,379 @@ select {
   transform: rotate(-8deg);
 }
 
+
+.journeyCard {
+  position: relative;
+  overflow: hidden;
+  color: white;
+  background:
+    radial-gradient(circle at 22% 18%, rgba(255, 214, 90, 0.24), transparent 18%),
+    radial-gradient(circle at 78% 15%, rgba(95, 224, 178, 0.16), transparent 16%),
+    linear-gradient(160deg, rgba(12, 28, 67, 0.96) 0%, rgba(24, 53, 109, 0.94) 100%);
+  border-color: rgba(255, 255, 255, 0.14);
+}
+
+.journeyCard::after {
+  content: "";
+  position: absolute;
+  inset: auto -12% -28% auto;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 90, 0.22), transparent 72%);
+}
+
+
+@keyframes rocketIdle {
+  0%,
+  100% { transform: translateY(0) rotate(-2deg); }
+  50% { transform: translateY(-7px) rotate(2deg); }
+}
+
+@keyframes rocketBoost {
+  0% { transform: translateY(0) scale(1) rotate(-3deg); }
+  30% { transform: translateY(-10px) scale(1.08) rotate(3deg); }
+  100% { transform: translateY(0) scale(1) rotate(-2deg); }
+}
+
+@keyframes starPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(255, 214, 90, 0)); }
+  50% { transform: scale(1.14); filter: drop-shadow(0 0 12px rgba(255, 214, 90, 0.42)); }
+}
+
+@keyframes starBurst {
+  0% { transform: scale(0.8); opacity: 0; }
+  25% { opacity: 1; }
+  100% { transform: scale(1.35) translateY(-16px); opacity: 0; }
+}
+
+@keyframes cardGlow {
+  0%, 100% { box-shadow: 0 18px 55px rgba(10, 20, 52, 0.2); }
+  50% { box-shadow: 0 20px 65px rgba(255, 214, 90, 0.22); }
+}
+
+@keyframes planetGlow {
+  0%, 100% { transform: scale(1); box-shadow: 0 16px 36px rgba(255, 154, 102, 0.22); }
+  50% { transform: scale(1.08); box-shadow: 0 18px 40px rgba(255, 214, 90, 0.34); }
+}
+
+.journeyCard .eyebrow,
+.journeyCard .heroSubheading {
+  color: #ffd65a;
+}
+
+.journeyCard h2,
+.journeyCard .name,
+.journeyCard .journeyPrimaryValue,
+.journeyCard .rank,
+.journeyCard .subtitle {
+  position: relative;
+  z-index: 1;
+}
+
+.journeyCard .subtitle,
+.journeyCard .rank {
+  color: rgba(240, 245, 255, 0.82);
+}
+
+.journeyHeader {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.journeyHeader h2 {
+  margin: 0;
+  font-size: clamp(1.9rem, 5vw, 2.35rem);
+}
+
+.journeyHeroPanel {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 1rem;
+  align-items: center;
+}
+
+.journeyPlanet {
+  width: 5.8rem;
+  height: 5.8rem;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 32%, #fff0ad 0%, #ffd65a 45%, #ff9a66 100%);
+  box-shadow: 0 16px 36px rgba(255, 154, 102, 0.22);
+  display: grid;
+  place-items: center;
+  font-size: 1.25rem;
+  font-weight: 900;
+  color: #15335a;
+}
+
+
+.journeySparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.journeySparkles span {
+  position: absolute;
+  color: #ffd65a;
+  font-size: 1.6rem;
+  opacity: 0;
+  animation: starBurst 1.2s ease-out forwards;
+}
+
+.journeySparkles.step span:nth-child(1) { top: 1.6rem; left: 24%; }
+.journeySparkles.step span:nth-child(2) { top: 4rem; left: 48%; animation-delay: 0.08s; }
+.journeySparkles.step span:nth-child(3) { top: 2.8rem; right: 22%; animation-delay: 0.16s; }
+.journeySparkles.step span:nth-child(4) { top: 5rem; right: 12%; animation-delay: 0.22s; }
+.journeySparkles.star span:nth-child(1) { top: 1.2rem; left: 18%; }
+.journeySparkles.star span:nth-child(2) { top: 2.2rem; left: 50%; animation-delay: 0.08s; }
+.journeySparkles.star span:nth-child(3) { top: 1.8rem; right: 20%; animation-delay: 0.16s; }
+.journeySparkles.star span:nth-child(4) { top: 4.6rem; right: 10%; animation-delay: 0.24s; }
+
+.planetCelebrate {
+  animation: planetGlow 0.95s ease-in-out 2;
+}
+
+.journeyTrackWrap {
+  position: relative;
+  min-height: 4.75rem;
+  display: grid;
+  align-items: center;
+}
+
+.journeyTrackLine,
+.journeyModeBar,
+.dailyGoalBar {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+}
+
+.journeyTrackLine {
+  height: 0.95rem;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.journeyTrackFill,
+.journeyModeBarFill,
+.dailyGoalFill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: inherit;
+}
+
+.journeyTrackFill {
+  background: linear-gradient(90deg, #5fe0b2 0%, #ffd65a 100%);
+}
+
+.journeyRocket {
+  position: absolute;
+  top: -0.3rem;
+  width: 3.4rem;
+  height: 3.4rem;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+  display: grid;
+  place-items: center;
+  font-size: 1.7rem;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.2);
+}
+
+
+.journeyRocket {
+  animation: rocketIdle 3.2s ease-in-out infinite;
+}
+
+.rocketBoost {
+  animation: rocketBoost 0.7s ease-out 2;
+}
+
+.rocketCelebrate {
+  animation: rocketBoost 0.9s ease-out 2;
+}
+
+.journeyGoalStar {
+  position: absolute;
+  top: -0.2rem;
+  right: -0.2rem;
+  font-size: 2.6rem;
+  color: #ffd65a;
+  text-shadow: 0 0 18px rgba(255, 214, 90, 0.45);
+}
+
+.goalStarCelebrate {
+  animation: starPulse 0.8s ease-in-out 3;
+}
+
+.journeyStatsRow {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+}
+
+.journeyMiniCard,
+.dailyGoalCard,
+.journeyFactField,
+.journeyResultCard,
+.journeyPathTile {
+  position: relative;
+  z-index: 1;
+  padding: 0.95rem 1rem;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.journeyPrimaryValue {
+  margin: 0;
+  font-size: clamp(1.5rem, 4vw, 2rem);
+  font-weight: 900;
+}
+
+.journeyStarsPanel {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+}
+
+.journeyStars {
+  display: inline-flex;
+  gap: 0.35rem;
+  align-items: center;
+}
+
+.journeyStar {
+  font-size: 1.7rem;
+  color: rgba(255, 255, 255, 0.22);
+  text-shadow: none;
+}
+
+.journeyStar.filled {
+  color: #ffd65a;
+  text-shadow: 0 0 16px rgba(255, 214, 90, 0.38);
+}
+
+.starsCelebrate .journeyStar.filled {
+  animation: starPulse 0.7s ease-in-out 3;
+}
+
+.journeyStepBoost {
+  animation: cardGlow 1.2s ease-in-out 1;
+}
+
+.journeyStarBurst {
+  animation: cardGlow 1.8s ease-in-out 1;
+}
+
+.compactStars .journeyStar {
+  font-size: 1.15rem;
+}
+
+.dailyGoalBar,
+.journeyModeBar {
+  height: 0.9rem;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.dailyGoalFill {
+  background: linear-gradient(90deg, #ff9a66 0%, #ffd65a 100%);
+}
+
+.journeyModeBarFill {
+  background: linear-gradient(90deg, rgba(95, 224, 178, 0.92) 0%, rgba(255, 214, 90, 0.95) 100%);
+}
+
+.journeyFactField {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.journeyFactsGrid,
+.journeyPathGrid {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.journeyFactsGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.journeyFactBubble {
+  padding: 0.85rem 0.8rem;
+  border-radius: 20px;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.09);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.journeyFactBubble.step-0 {
+  opacity: 0.78;
+}
+
+.journeyFactBubble.step-1 {
+  background: rgba(95, 224, 178, 0.14);
+}
+
+.journeyFactBubble.step-2 {
+  background: rgba(255, 214, 90, 0.18);
+}
+
+.journeyFactBubble.step-3 {
+  background: rgba(255, 214, 90, 0.28);
+  box-shadow: 0 10px 22px rgba(255, 214, 90, 0.16);
+}
+
+.journeyFactValue,
+.journeyFactLevel {
+  margin: 0;
+}
+
+.journeyFactValue {
+  font-size: 1rem;
+  font-weight: 900;
+}
+
+.journeyFactLevel {
+  color: rgba(240, 245, 255, 0.78);
+  font-size: 0.8rem;
+}
+
+.journeyPathMap {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.journeyPathGrid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.journeyPathTile.active {
+  border-color: rgba(255, 214, 90, 0.58);
+  box-shadow: 0 0 0 1px rgba(255, 214, 90, 0.3);
+}
+
+.journeyPathTile.complete {
+  background: rgba(95, 224, 178, 0.15);
+}
+
+.pathTileHeader {
+  align-items: start;
+}
+
+.modeFocusCard .journeyHeader h2 {
+  font-size: clamp(1.7rem, 4.4vw, 2.2rem);
+}
+
+.journeyResultCard {
+  display: grid;
+  gap: 0.7rem;
+}
+
+.journeyCardDetailed .journeyHeroPanel {
+  margin-bottom: 0.2rem;
+}
+
 .leaderboardList {
   display: grid;
   gap: 0.75rem;
@@ -391,6 +783,16 @@ select {
 
 .softCard {
   background: rgba(255, 255, 255, 0.62);
+}
+
+.localSettingsCard {
+  align-items: center;
+  padding: 0.95rem 1rem;
+}
+
+.soundToggleButton.active {
+  background: linear-gradient(180deg, rgba(255, 214, 90, 0.95) 0%, rgba(255, 154, 102, 0.95) 100%);
+  color: #16304a;
 }
 
 .memberActions {
@@ -581,5 +983,35 @@ select {
 @media (max-width: 640px) {
   .statsGrid {
     grid-template-columns: 1fr;
+  }
+}
+
+
+@media (max-width: 640px) {
+  .journeyHeroPanel,
+  .journeyStatsRow,
+  .journeyPathGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .journeyPlanet {
+    width: 4.8rem;
+    height: 4.8rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .journeyFactsGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .journeyRocket {
+    width: 3rem;
+    height: 3rem;
+    font-size: 1.45rem;
+  }
+
+  .journeyGoalStar {
+    font-size: 2.2rem;
   }
 }

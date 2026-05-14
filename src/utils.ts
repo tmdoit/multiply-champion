@@ -1,4 +1,4 @@
-import type { FactKey, FactStats, FactTask, ProgressSnapshot } from "./types";
+import type { FactKey, FactStats, FactTask, JourneyProgress, JourneyPathSummary, ModeSummary, ProgressSnapshot } from "./types";
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -110,4 +110,88 @@ function weightedRandomIndex(weights: number[]): number {
     }
   }
   return weights.length - 1;
+}
+
+
+const JOURNEY_MAX_STEP = 3;
+const JOURNEY_DAILY_GOAL = 5;
+
+export function getFactMasteryStep(stats?: FactStats): number {
+  const normalized = normalizeFactStats(stats);
+  return clamp(normalized.correct - normalized.wrong, 0, JOURNEY_MAX_STEP);
+}
+
+export function calculateJourneyProgress(
+  mode: ModeSummary | null,
+  progress: ProgressSnapshot,
+  dailyGoalProgress: number
+): JourneyProgress | null {
+  if (!mode || mode.code !== "to100-table10") {
+    return null;
+  }
+
+  const paths: JourneyPathSummary[] = [];
+  const currentPathFactsByMultiplier = new Map<number, JourneyProgress["currentPathFacts"]>();
+  let totalMasteredFacts = 0;
+  let totalSteps = 0;
+
+  for (let multiplier = 1; multiplier <= 10; multiplier += 1) {
+    const facts = [];
+    let pathSteps = 0;
+    let masteredFacts = 0;
+    for (let right = 1; right <= 10; right += 1) {
+      const factKey = createFactKey(multiplier, right);
+      const steps = getFactMasteryStep(progress[factKey]);
+      const isMastered = steps >= JOURNEY_MAX_STEP;
+      if (isMastered) {
+        masteredFacts += 1;
+        totalMasteredFacts += 1;
+      }
+      pathSteps += steps;
+      facts.push({
+        factKey,
+        label: `${multiplier}×${right}`,
+        steps,
+        maxSteps: JOURNEY_MAX_STEP,
+        isMastered
+      });
+    }
+    totalSteps += pathSteps;
+    const stars = Math.min(3, Math.floor(pathSteps / 10));
+    const path = {
+      multiplier,
+      label: `×${multiplier}`,
+      steps: pathSteps,
+      totalSteps: 10 * JOURNEY_MAX_STEP,
+      masteredFacts,
+      totalFacts: 10,
+      stars,
+      isComplete: pathSteps >= 10 * JOURNEY_MAX_STEP
+    };
+    paths.push(path);
+    currentPathFactsByMultiplier.set(multiplier, facts);
+  }
+
+  const currentPath = paths.find((path) => !path.isComplete) ?? paths[paths.length - 1];
+  const nextStarThreshold = currentPath.stars >= 3 ? currentPath.totalSteps : (currentPath.stars + 1) * 10;
+  const stepsToNextStar = currentPath.stars >= 3 ? 0 : Math.max(0, nextStarThreshold - currentPath.steps);
+  const totalFacts = 100;
+
+  return {
+    currentPathLabel: currentPath.label,
+    currentPathMultiplier: currentPath.multiplier,
+    currentPathSteps: currentPath.steps,
+    currentPathTotalSteps: currentPath.totalSteps,
+    currentPathStars: currentPath.stars,
+    currentPathMasteredFacts: currentPath.masteredFacts,
+    currentPathTotalFacts: currentPath.totalFacts,
+    stepsToNextStar,
+    dailyGoalSteps: JOURNEY_DAILY_GOAL,
+    dailyGoalProgress: Math.max(0, dailyGoalProgress),
+    totalMasteredFacts,
+    totalFacts,
+    percentComplete: Math.round((totalSteps / (totalFacts * JOURNEY_MAX_STEP)) * 100),
+    paths,
+    currentPathFacts: currentPathFactsByMultiplier.get(currentPath.multiplier) ?? []
+  };
 }
