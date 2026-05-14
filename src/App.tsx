@@ -9,7 +9,6 @@ import {
   getActiveMultiplier,
   getAllPathSummaries,
   getFactStep,
-  getOverallSteps,
   getPathSummary,
   updateFactStep
 } from "./utils";
@@ -109,9 +108,6 @@ export default function App() {
 
   const pathSummaries = useMemo(() => getAllPathSummaries(progress), [progress]);
   const activeMultiplier = useMemo(() => getActiveMultiplier(progress), [progress]);
-  const activePath = useMemo(() => pathSummaries.find((path) => path.multiplier === activeMultiplier) ?? pathSummaries[0], [pathSummaries, activeMultiplier]);
-  const currentLapNumber = lapCount + 1;
-  const overallSteps = useMemo(() => getOverallSteps(progress), [progress]);
   const currentTask = game ? game.queue[game.currentIndex] : null;
   const currentTaskStep = currentTask ? getFactStep(progress, currentTask.key) : 0;
 
@@ -340,47 +336,16 @@ export default function App() {
           )}
         </div>
 
-        <div className="card stack focusCard">
-          <div className="focusHeaderRow">
-            <div className="focusHeaderCopy">
-              <span className="focusLabel">Teraz ćwiczysz</span>
-              <h2 className="focusTitle">Ścieżka {activePath.label}</h2>
-            </div>
-            <p className="focusRemaining">Zostało {activePath.totalSteps - activePath.steps}</p>
-          </div>
-          <div className="progressBar largeBar" aria-hidden="true">
-            <span className="progressFill" style={{ width: `${Math.round((activePath.steps / activePath.totalSteps) * 100)}%` }} />
-          </div>
-          <div className="progressSummaryRow compactSummaryRow">
-            <p className="bigProgress">{activePath.steps}/{activePath.totalSteps}</p>
-            <p className="statusLine">kroków w tej ścieżce</p>
-          </div>
-          <div className="rulesCard">
-            <p className="name">Jak zaliczyć ścieżkę?</p>
-            <p className="statusLine">W ścieżce jest 10 działań.</p>
-            <p className="statusLine">Każde działanie trzeba zrobić dobrze 3 razy.</p>
-            <p className="statusLine">Dobra odpowiedź dodaje 1 krok. Pomyłka cofa o 1 krok.</p>
-          </div>
-          <button className="primaryButton" onClick={startRun}>
-            {activePath.steps === 0 ? "Start" : "Kontynuuj"}
-          </button>
-        </div>
-
-        <div className="card stack">
-          <div className="sectionTitleRow">
-            <h2>Okrążenie {currentLapNumber}</h2>
-            <p className="statusLine">{overallSteps}/{APP_CONFIG.pathCount * APP_CONFIG.pathTotalSteps} kroków</p>
-          </div>
-          <div className="progressBar" aria-hidden="true">
-            <span className="progressFill overallFill" style={{ width: `${Math.round((overallSteps / (APP_CONFIG.pathCount * APP_CONFIG.pathTotalSteps)) * 100)}%` }} />
-          </div>
-          <p className="statusLine">Ukończone okrążenia: {lapCount}. Jesteś teraz na ścieżce {activePath.label}.</p>
-        </div>
-
         <div className="card stack">
           <div className="sectionTitleRow">
             <h2>Ścieżki</h2>
             <p className="statusLine">10 ścieżek • 300 kroków • ukończone okrążenia: {lapCount}</p>
+          </div>
+          <div className="rulesCard">
+            <p className="name">Jak zaliczyć ścieżkę?</p>
+            <p className="statusLine">W ścieżce jest 10 działań.</p>
+            <p className="statusLine">Każde trzeba zrobić dobrze 3 razy.</p>
+            <p className="statusLine">Pomyłka cofa o 1 krok.</p>
           </div>
           <div className="pathList">
             {pathSummaries.map((path) => (
