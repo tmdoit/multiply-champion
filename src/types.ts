@@ -57,4 +57,5 @@ export type RunResult = {
   stars: number;
   masteredFacts: number;
   totalFacts: number;
+  completedLapCount: number;
 };

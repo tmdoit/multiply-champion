@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { APP_CONFIG } from "./constants";
-import { loadChildName, loadProgress, saveChildName, saveProgress } from "./storage";
+import { loadChildName, loadLapCount, loadProgress, saveChildName, saveLapCount, saveProgress } from "./storage";
 import type { FactProgress, GameState, RunResult, Screen, SessionTask } from "./types";
 import {
   buildSessionQueue,
@@ -21,6 +21,7 @@ export default function App() {
   const [nameDraft, setNameDraft] = useState(() => loadChildName());
   const [isEditingName, setIsEditingName] = useState(() => loadChildName().trim().length === 0);
   const [progress, setProgress] = useState<FactProgress>(() => loadProgress());
+  const [lapCount, setLapCount] = useState(() => loadLapCount());
   const [game, setGame] = useState<GameState | null>(null);
   const [lastResult, setLastResult] = useState<RunResult | null>(null);
   const [popupMessage, setPopupMessage] = useState<string | null>(null);
@@ -109,7 +110,7 @@ export default function App() {
   const pathSummaries = useMemo(() => getAllPathSummaries(progress), [progress]);
   const activeMultiplier = useMemo(() => getActiveMultiplier(progress), [progress]);
   const activePath = useMemo(() => pathSummaries.find((path) => path.multiplier === activeMultiplier) ?? pathSummaries[0], [pathSummaries, activeMultiplier]);
-  const allCompleted = pathSummaries.every((path) => path.completed);
+  const currentLapNumber = lapCount + 1;
   const overallSteps = useMemo(() => getOverallSteps(progress), [progress]);
   const currentTask = game ? game.queue[game.currentIndex] : null;
   const currentTaskStep = currentTask ? getFactStep(progress, currentTask.key) : 0;
@@ -125,10 +126,6 @@ export default function App() {
   }
 
   function startRun(): void {
-    if (allCompleted) {
-      setPopupMessage("Cała tabliczka została już opanowana. Możesz wracać do ścieżek i ćwiczyć dalej.");
-      return;
-    }
     const queue = buildSessionQueue(progressRef.current, activeMultiplier);
     if (queue.length === 0) {
       setPopupMessage("Ta ścieżka jest już gotowa. Zaraz odblokuje się kolejna.");
@@ -259,6 +256,7 @@ export default function App() {
     const summary = getPathSummary(progressRef.current, pathMultiplier, getActiveMultiplier(progressRef.current));
     const nextPath = allSummaries.find((path) => path.multiplier === pathMultiplier + 1);
     const fullyCompleted = allSummaries.every((path) => path.completed);
+    const completedLapCount = fullyCompleted ? lapCount + 1 : lapCount;
 
     setLastResult({
       childName: childName.trim() || null,
@@ -271,8 +269,17 @@ export default function App() {
       totalSteps: summary.totalSteps,
       stars: summary.stars,
       masteredFacts: summary.masteredFacts,
-      totalFacts: summary.totalFacts
+      totalFacts: summary.totalFacts,
+      completedLapCount
     });
+
+    if (fullyCompleted) {
+      setLapCount(completedLapCount);
+      saveLapCount(completedLapCount);
+      progressRef.current = {};
+      setProgress({});
+    }
+
     setGame(null);
     setScreen("results");
   }
@@ -361,19 +368,19 @@ export default function App() {
 
         <div className="card stack">
           <div className="sectionTitleRow">
-            <h2>Cała droga</h2>
+            <h2>Okrążenie {currentLapNumber}</h2>
             <p className="statusLine">{overallSteps}/{APP_CONFIG.pathCount * APP_CONFIG.pathTotalSteps} kroków</p>
           </div>
           <div className="progressBar" aria-hidden="true">
             <span className="progressFill overallFill" style={{ width: `${Math.round((overallSteps / (APP_CONFIG.pathCount * APP_CONFIG.pathTotalSteps)) * 100)}%` }} />
           </div>
-          <p className="statusLine">Jesteś teraz na ścieżce {activePath.label}. Kolejne ścieżki odblokowują się po ukończeniu bieżącej.</p>
+          <p className="statusLine">Ukończone okrążenia: {lapCount}. Jesteś teraz na ścieżce {activePath.label}.</p>
         </div>
 
         <div className="card stack">
           <div className="sectionTitleRow">
             <h2>Ścieżki</h2>
-            <p className="statusLine">10 ścieżek po 10 działań</p>
+            <p className="statusLine">10 ścieżek • 300 kroków • ukończone okrążenia: {lapCount}</p>
           </div>
           <div className="pathList">
             {pathSummaries.map((path) => (
@@ -493,7 +500,7 @@ export default function App() {
           <p className="eyebrow">Podsumowanie</p>
           <h2>
             {lastResult.fullyCompleted
-              ? "Cała tabliczka opanowana!"
+              ? `Okrążenie ${lastResult.completedLapCount} ukończone!`
               : lastResult.completedPath
                 ? `Ścieżka ×${lastResult.pathMultiplier} ukończona!`
                 : `Dobra robota${lastResult.childName ? `, ${lastResult.childName}` : ""}!`}
@@ -506,12 +513,15 @@ export default function App() {
           {lastResult.completedPath && nextPathLabel ? (
             <p className="pathHelp">Odblokowano kolejną ścieżkę: {nextPathLabel}.</p>
           ) : null}
-          {!lastResult.completedPath ? (
+          {lastResult.fullyCompleted ? (
+            <p className="pathHelp">Postęp ścieżek został wyzerowany. Możesz zacząć nowe okrążenie od ×1.</p>
+          ) : null}
+          {!lastResult.completedPath && !lastResult.fullyCompleted ? (
             <p className="pathHelp">Wracaj do tej ścieżki. Rozpoczęte działania pojawią się najpierw.</p>
           ) : null}
           <div className="buttonGrid singleOnMobile">
             <button className="primaryButton" onClick={startRun}>
-              {lastResult.fullyCompleted ? "Jeszcze raz" : "Dalej"}
+              {lastResult.fullyCompleted ? "Nowe okrążenie" : "Dalej"}
             </button>
             <button className="ghostButton" onClick={() => setScreen("home")}>
               Strona główna

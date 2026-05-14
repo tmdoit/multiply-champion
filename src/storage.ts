@@ -29,3 +29,11 @@ export function loadProgress(): FactProgress {
 export function saveProgress(progress: FactProgress): void {
   writeJson(STORAGE_KEYS.progress, progress);
 }
+
+export function loadLapCount(): number {
+  return readJson<number>(STORAGE_KEYS.lapCount, 0);
+}
+
+export function saveLapCount(count: number): void {
+  writeJson(STORAGE_KEYS.lapCount, count);
+}
