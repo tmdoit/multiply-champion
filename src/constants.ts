@@ -42,9 +42,7 @@ export const STORAGE_KEYS = {
   leaderboard: "multiply.localLeaderboard",
   progress: "multiply.progress",
   pendingResults: "multiply.pendingResults",
-  pendingProgress: "multiply.pendingProgress",
-  journeyDaily: "multiply.journeyDaily",
-  soundEnabled: "multiply.soundEnabled"
+  pendingProgress: "multiply.pendingProgress"
 } as const;
 
 export const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim() ?? "";

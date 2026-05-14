@@ -97,43 +97,6 @@ export type PlayerFactStat = {
   averageMs: number;
 };
 
-export type JourneyPathSummary = {
-  multiplier: number;
-  label: string;
-  steps: number;
-  totalSteps: number;
-  masteredFacts: number;
-  totalFacts: number;
-  stars: number;
-  isComplete: boolean;
-};
-
-export type JourneyFactSummary = {
-  factKey: FactKey;
-  label: string;
-  steps: number;
-  maxSteps: number;
-  isMastered: boolean;
-};
-
-export type JourneyProgress = {
-  currentPathLabel: string;
-  currentPathMultiplier: number;
-  currentPathSteps: number;
-  currentPathTotalSteps: number;
-  currentPathStars: number;
-  currentPathMasteredFacts: number;
-  currentPathTotalFacts: number;
-  stepsToNextStar: number;
-  dailyGoalSteps: number;
-  dailyGoalProgress: number;
-  totalMasteredFacts: number;
-  totalFacts: number;
-  percentComplete: number;
-  paths: JourneyPathSummary[];
-  currentPathFacts: JourneyFactSummary[];
-};
-
 export type PlayerStats = {
   bestTimeMs: number | null;
   gamesPlayed: number;
