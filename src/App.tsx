@@ -319,7 +319,7 @@ export default function App() {
                     <p className="name">Ścieżka {path.label}</p>
                     <div className="pathHeaderMeta">
                       <p className="rank">{path.steps}/{path.totalSteps}</p>
-                      <button className="ghostButton small" onClick={() => startRun(path.multiplier)}>
+                      <button className="trainButton" onClick={() => startRun(path.multiplier)}>
                         Trenuj
                       </button>
                     </div>
