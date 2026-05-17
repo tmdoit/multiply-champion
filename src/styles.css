@@ -199,17 +199,19 @@ input {
 }
 
 .trainButton {
-  min-height: 2.9rem;
-  padding: 0 1rem;
-  border-radius: 18px;
-  background: linear-gradient(180deg, #ffb36f 0%, #ff8a5b 100%);
-  color: white;
+  min-height: 2.35rem;
+  padding: 0 0.85rem;
+  border-radius: 14px;
+  background: rgba(22, 48, 74, 0.08);
+  color: #16304a;
+  font-size: 0.92rem;
   font-weight: 900;
-  box-shadow: 0 10px 24px rgba(255, 138, 91, 0.28);
+  border: 1px solid rgba(22, 48, 74, 0.14);
 }
 
 .trainButton:hover {
   transform: translateY(-1px);
+  background: rgba(22, 48, 74, 0.12);
 }
 
 .large {
