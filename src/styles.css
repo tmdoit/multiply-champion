@@ -414,6 +414,29 @@ input {
   font-weight: 900;
 }
 
+.pathToggle {
+  min-height: 1.9rem;
+  padding: 0 0.75rem;
+  border-radius: 999px;
+  font-size: 0.78rem;
+  font-weight: 900;
+}
+
+.toggleOn {
+  background: rgba(31, 157, 104, 0.16);
+  color: var(--success);
+}
+
+.toggleOff {
+  background: rgba(214, 82, 82, 0.12);
+  color: var(--danger);
+}
+
+.disabledPath {
+  opacity: 0.84;
+  background: rgba(245, 245, 245, 0.88);
+}
+
 .name {
   margin: 0;
   font-size: 1.1rem;

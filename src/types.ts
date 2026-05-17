@@ -6,6 +6,8 @@ export type FactPhase = "review" | "new";
 
 export type FactProgress = Record<FactKey, number>;
 
+export type EnabledPathMap = Record<number, boolean>;
+
 export type PathSummary = {
   multiplier: number;
   label: string;
@@ -17,6 +19,7 @@ export type PathSummary = {
   unlocked: boolean;
   completed: boolean;
   active: boolean;
+  enabled: boolean;
 };
 
 export type SessionTask = {
@@ -50,6 +53,7 @@ export type RunResult = {
   pathMultiplier: number;
   completedPath: boolean;
   unlockedNextPath: boolean;
+  nextPathLabel: string | null;
   fullyCompleted: boolean;
   totalTimeMs: number;
   steps: number;
@@ -58,4 +62,5 @@ export type RunResult = {
   masteredFacts: number;
   totalFacts: number;
   completedLapCount: number;
+  lapPathCount: number;
 };

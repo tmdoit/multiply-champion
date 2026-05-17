@@ -12,5 +12,6 @@ export const APP_CONFIG = {
 export const STORAGE_KEYS = {
   childName: "multiply.localChildName",
   progress: "multiply.localProgress",
-  lapCount: "multiply.localLapCount"
+  lapCount: "multiply.localLapCount",
+  enabledPaths: "multiply.localEnabledPaths"
 } as const;

@@ -1,5 +1,5 @@
-import { STORAGE_KEYS } from "./constants";
-import type { FactProgress } from "./types";
+import { APP_CONFIG, STORAGE_KEYS } from "./constants";
+import type { EnabledPathMap, FactProgress } from "./types";
 
 function readJson<T>(key: string, fallback: T): T {
   try {
@@ -12,6 +12,12 @@ function readJson<T>(key: string, fallback: T): T {
 
 function writeJson<T>(key: string, value: T): void {
   localStorage.setItem(key, JSON.stringify(value));
+}
+
+function createDefaultEnabledPaths(): EnabledPathMap {
+  return Object.fromEntries(
+    Array.from({ length: APP_CONFIG.pathCount }, (_, index) => [index + 1, true])
+  ) as EnabledPathMap;
 }
 
 export function loadChildName(): string {
@@ -36,4 +42,17 @@ export function loadLapCount(): number {
 
 export function saveLapCount(count: number): void {
   writeJson(STORAGE_KEYS.lapCount, count);
+}
+
+export function loadEnabledPaths(): EnabledPathMap {
+  const stored = readJson<EnabledPathMap>(STORAGE_KEYS.enabledPaths, createDefaultEnabledPaths());
+  const fallback = createDefaultEnabledPaths();
+  for (let multiplier = 1; multiplier <= APP_CONFIG.pathCount; multiplier += 1) {
+    fallback[multiplier] = stored[multiplier] !== false;
+  }
+  return fallback;
+}
+
+export function saveEnabledPaths(enabledPaths: EnabledPathMap): void {
+  writeJson(STORAGE_KEYS.enabledPaths, enabledPaths);
 }

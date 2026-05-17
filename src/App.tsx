@@ -1,7 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { APP_CONFIG } from "./constants";
-import { loadChildName, loadLapCount, loadProgress, saveChildName, saveLapCount, saveProgress } from "./storage";
-import type { FactProgress, GameState, RunResult, Screen } from "./types";
+import {
+  loadChildName,
+  loadEnabledPaths,
+  loadLapCount,
+  loadProgress,
+  saveChildName,
+  saveEnabledPaths,
+  saveLapCount,
+  saveProgress
+} from "./storage";
+import type { EnabledPathMap, FactProgress, GameState, RunResult, Screen } from "./types";
 import {
   buildSessionQueue,
   describeStep,
@@ -10,6 +19,7 @@ import {
   getAllPathSummaries,
   getFactStep,
   getPathSummary,
+  resetEnabledPathProgress,
   updateFactStep
 } from "./utils";
 import "./styles.css";
@@ -20,6 +30,7 @@ export default function App() {
   const [nameDraft, setNameDraft] = useState(() => loadChildName());
   const [isEditingName, setIsEditingName] = useState(() => loadChildName().trim().length === 0);
   const [progress, setProgress] = useState<FactProgress>(() => loadProgress());
+  const [enabledPaths, setEnabledPaths] = useState<EnabledPathMap>(() => loadEnabledPaths());
   const [lapCount, setLapCount] = useState(() => loadLapCount());
   const [game, setGame] = useState<GameState | null>(null);
   const [lastResult, setLastResult] = useState<RunResult | null>(null);
@@ -32,6 +43,10 @@ export default function App() {
     saveProgress(progress);
     progressRef.current = progress;
   }, [progress]);
+
+  useEffect(() => {
+    saveEnabledPaths(enabledPaths);
+  }, [enabledPaths]);
 
   useEffect(() => {
     gameRef.current = game;
@@ -54,7 +69,10 @@ export default function App() {
         const elapsed = Date.now() - current.taskStartedAt;
         const remainingMs = Math.max(0, APP_CONFIG.timerSecondsPerTask * 1000 - elapsed);
         if (remainingMs === 0) {
-          window.setTimeout(() => handleIncorrectAnswer(`Czas minął. Poprawna odpowiedź: ${current.queue[current.currentIndex].answer}`), 0);
+          window.setTimeout(
+            () => handleIncorrectAnswer(`Czas minął. Poprawna odpowiedź: ${current.queue[current.currentIndex].answer}`),
+            0
+          );
           return {
             ...current,
             remainingMs: 0,
@@ -106,8 +124,10 @@ export default function App() {
     return () => window.clearTimeout(timeoutId);
   }, [game?.waitingForNext, game?.feedbackDelayMs]);
 
-  const pathSummaries = useMemo(() => getAllPathSummaries(progress), [progress]);
-  const activeMultiplier = useMemo(() => getActiveMultiplier(progress), [progress]);
+  const pathSummaries = useMemo(() => getAllPathSummaries(progress, enabledPaths), [progress, enabledPaths]);
+  const activeMultiplier = useMemo(() => getActiveMultiplier(progress, enabledPaths), [progress, enabledPaths]);
+  const enabledPathCount = useMemo(() => pathSummaries.filter((path) => path.enabled).length, [pathSummaries]);
+  const enabledPathStepCount = enabledPathCount * APP_CONFIG.pathTotalSteps;
   const currentTask = game ? game.queue[game.currentIndex] : null;
   const currentTaskStep = currentTask ? getFactStep(progress, currentTask.key) : 0;
 
@@ -121,14 +141,46 @@ export default function App() {
     }
   }
 
+  function togglePath(multiplier: number): void {
+    setEnabledPaths((current) => ({
+      ...current,
+      [multiplier]: !(current[multiplier] !== false)
+    }));
+  }
+
   function startRun(): void {
-    const queue = buildSessionQueue(progressRef.current, activeMultiplier);
-    if (queue.length === 0) {
-      setPopupMessage("Ta ścieżka jest już gotowa. Zaraz odblokuje się kolejna.");
+    if (enabledPathCount === 0) {
+      setPopupMessage("Włącz przynajmniej jedną ścieżkę.");
       return;
     }
+
+    let nextProgress = progressRef.current;
+    let nextActiveMultiplier = activeMultiplier;
+
+    if (nextActiveMultiplier === null) {
+      const resetProgress = resetEnabledPathProgress(progressRef.current, enabledPaths);
+      const nextLapCount = lapCount + 1;
+      progressRef.current = resetProgress;
+      setProgress(resetProgress);
+      setLapCount(nextLapCount);
+      saveLapCount(nextLapCount);
+      nextProgress = resetProgress;
+      nextActiveMultiplier = getActiveMultiplier(resetProgress, enabledPaths);
+    }
+
+    if (nextActiveMultiplier === null) {
+      setPopupMessage("Włącz przynajmniej jedną ścieżkę.");
+      return;
+    }
+
+    const queue = buildSessionQueue(nextProgress, nextActiveMultiplier);
+    if (queue.length === 0) {
+      setPopupMessage("Wybrane ścieżki są już gotowe.");
+      return;
+    }
+
     setGame({
-      pathMultiplier: activeMultiplier,
+      pathMultiplier: nextActiveMultiplier,
       queue,
       currentIndex: 0,
       input: "",
@@ -239,17 +291,20 @@ export default function App() {
   }
 
   function finishRun(pathMultiplier: number): void {
-    const allSummaries = getAllPathSummaries(progressRef.current);
-    const summary = getPathSummary(progressRef.current, pathMultiplier, getActiveMultiplier(progressRef.current));
-    const nextPath = allSummaries.find((path) => path.multiplier === pathMultiplier + 1);
-    const fullyCompleted = allSummaries.every((path) => path.completed);
+    const allSummaries = getAllPathSummaries(progressRef.current, enabledPaths);
+    const enabledSummaries = allSummaries.filter((path) => path.enabled);
+    const nextActiveMultiplier = getActiveMultiplier(progressRef.current, enabledPaths);
+    const summary = getPathSummary(progressRef.current, pathMultiplier, nextActiveMultiplier, enabledPaths);
+    const nextPath = enabledSummaries.find((path) => path.multiplier > pathMultiplier && !path.completed);
+    const fullyCompleted = enabledSummaries.length > 0 && enabledSummaries.every((path) => path.completed);
     const completedLapCount = fullyCompleted ? lapCount + 1 : lapCount;
 
     setLastResult({
       childName: childName.trim() || null,
       pathMultiplier,
       completedPath: summary.completed,
-      unlockedNextPath: Boolean(summary.completed && pathMultiplier < APP_CONFIG.pathCount && nextPath),
+      unlockedNextPath: Boolean(summary.completed && nextPath),
+      nextPathLabel: summary.completed && nextPath ? nextPath.label : null,
       fullyCompleted,
       totalTimeMs: Date.now() - (gameRef.current?.startedAt ?? Date.now()),
       steps: summary.steps,
@@ -257,14 +312,16 @@ export default function App() {
       stars: summary.stars,
       masteredFacts: summary.masteredFacts,
       totalFacts: summary.totalFacts,
-      completedLapCount
+      completedLapCount,
+      lapPathCount: enabledSummaries.length
     });
 
     if (fullyCompleted) {
+      const resetProgress = resetEnabledPathProgress(progressRef.current, enabledPaths);
       setLapCount(completedLapCount);
       saveLapCount(completedLapCount);
-      progressRef.current = {};
-      setProgress({});
+      progressRef.current = resetProgress;
+      setProgress(resetProgress);
     }
 
     setGame(null);
@@ -330,7 +387,7 @@ export default function App() {
         <div className="card stack">
           <div className="sectionTitleRow">
             <h2>Ścieżki</h2>
-            <p className="statusLine">10 ścieżek • 300 kroków • ukończone okrążenia: {lapCount}</p>
+            <p className="statusLine">Aktywne ścieżki: {enabledPathCount}/{APP_CONFIG.pathCount} • okrążenie: {enabledPathStepCount} kroków • ukończone okrążenia: {lapCount}</p>
           </div>
           <div className="rulesCard">
             <p className="name">Jak zaliczyć ścieżkę?</p>
@@ -345,12 +402,20 @@ export default function App() {
             {pathSummaries.map((path) => (
               <article
                 key={path.multiplier}
-                className={`pathRow ${path.active ? "active" : ""} ${path.completed ? "completed" : ""} ${!path.unlocked ? "locked" : ""}`}
+                className={`pathRow ${path.active ? "active" : ""} ${path.completed ? "completed" : ""} ${!path.unlocked && path.enabled ? "locked" : ""} ${!path.enabled ? "disabledPath" : ""}`}
               >
                 <div className="pathContent">
                   <div className="sectionTitleRow pathRowHeader">
                     <p className="name">Ścieżka {path.label}</p>
                     <div className="pathHeaderMeta">
+                      <button
+                        className={`pathToggle ${path.enabled ? "toggleOn" : "toggleOff"}`}
+                        type="button"
+                        aria-pressed={path.enabled}
+                        onClick={() => togglePath(path.multiplier)}
+                      >
+                        {path.enabled ? "Włączona" : "Wyłączona"}
+                      </button>
                       {path.active ? <span className="activePathBadge">Ćwiczysz teraz</span> : null}
                       <p className="rank">{path.steps}/{path.totalSteps}</p>
                     </div>
@@ -360,7 +425,15 @@ export default function App() {
                   </div>
                   <p className="rank">Opanowane działania: {path.masteredFacts}/{path.totalFacts}</p>
                   <p className="rank">
-                    {!path.unlocked ? "Ta ścieżka odblokuje się później." : path.completed ? "Ta ścieżka jest ukończona." : path.active ? "To jest Twoja aktualna ścieżka." : "Ta ścieżka jest już odblokowana."}
+                    {!path.enabled
+                      ? "Ta ścieżka jest wyłączona w tym okrążeniu."
+                      : !path.unlocked
+                        ? "Ta ścieżka odblokuje się później."
+                        : path.completed
+                          ? "Ta ścieżka jest ukończona."
+                          : path.active
+                            ? "To jest Twoja aktualna ścieżka."
+                            : "Ta ścieżka jest już odblokowana."}
                   </p>
                 </div>
               </article>
@@ -453,7 +526,6 @@ export default function App() {
     if (!lastResult) {
       return renderHome();
     }
-    const nextPathLabel = lastResult.pathMultiplier < APP_CONFIG.pathCount ? `×${lastResult.pathMultiplier + 1}` : null;
     return (
       <section className="screen resultsScreen">
         <div className={`card stack celebrateCard ${lastResult.completedPath || lastResult.fullyCompleted ? "successGlow" : ""}`}>
@@ -474,8 +546,8 @@ export default function App() {
           <div className="focusSummary">
             {lastResult.fullyCompleted ? (
               <>
-                <p className="bigProgress">10 ścieżek ukończonych</p>
-                <p className="statusLine">Całe okrążenie jest gotowe.</p>
+                <p className="bigProgress">{lastResult.lapPathCount} ścieżek ukończonych</p>
+                <p className="statusLine">Wybrane ścieżki w tym okrążeniu są gotowe.</p>
               </>
             ) : (
               <>
@@ -484,11 +556,11 @@ export default function App() {
               </>
             )}
           </div>
-          {lastResult.completedPath && nextPathLabel ? (
-            <p className="pathHelp">Odblokowano kolejną ścieżkę: {nextPathLabel}.</p>
+          {lastResult.unlockedNextPath && lastResult.nextPathLabel ? (
+            <p className="pathHelp">Odblokowano kolejną ścieżkę: {lastResult.nextPathLabel}.</p>
           ) : null}
           {lastResult.fullyCompleted ? (
-            <p className="pathHelp">Postęp ścieżek został wyzerowany. Możesz zacząć nowe okrążenie od ×1.</p>
+            <p className="pathHelp">Wybrane ścieżki zostały wyzerowane. Możesz zacząć nowe okrążenie.</p>
           ) : null}
           {!lastResult.completedPath && !lastResult.fullyCompleted ? (
             <p className="pathHelp">Wracaj do tej ścieżki. Rozpoczęte działania pojawią się najpierw.</p>
@@ -519,4 +591,3 @@ export default function App() {
     </main>
   );
 }
-
