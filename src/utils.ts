@@ -1,5 +1,5 @@
 import { APP_CONFIG } from "./constants";
-import type { EnabledPathMap, FactKey, FactProgress, PathSummary, SessionTask } from "./types";
+import type { FactKey, FactProgress, PathSummary, SessionTask } from "./types";
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -30,18 +30,7 @@ export function updateFactStep(progress: FactProgress, factKey: FactKey, delta: 
   };
 }
 
-export function getEnabledMultipliers(enabledPaths: EnabledPathMap): number[] {
-  return Array.from({ length: APP_CONFIG.pathCount }, (_, index) => index + 1).filter(
-    (multiplier) => enabledPaths[multiplier] !== false
-  );
-}
-
-export function getPathSummary(
-  progress: FactProgress,
-  multiplier: number,
-  activeMultiplier: number | null,
-  enabledPaths: EnabledPathMap
-): PathSummary {
+export function getPathSummary(progress: FactProgress, multiplier: number): PathSummary {
   let steps = 0;
   let masteredFacts = 0;
 
@@ -53,50 +42,19 @@ export function getPathSummary(
     }
   }
 
-  const enabled = enabledPaths[multiplier] !== false;
-  const enabledMultipliers = getEnabledMultipliers(enabledPaths);
-  const activeIndex = activeMultiplier ? enabledMultipliers.indexOf(activeMultiplier) : -1;
-  const currentIndex = enabledMultipliers.indexOf(multiplier);
-  const unlocked = enabled && (activeMultiplier === null || currentIndex <= activeIndex || steps >= APP_CONFIG.pathTotalSteps);
-
   return {
     multiplier,
     label: `×${multiplier}`,
     steps,
     totalSteps: APP_CONFIG.pathTotalSteps,
-    stars: Math.min(3, Math.floor(steps / APP_CONFIG.stepsPerStar)),
     masteredFacts,
     totalFacts: APP_CONFIG.factsPerPath,
-    unlocked,
-    completed: steps >= APP_CONFIG.pathTotalSteps,
-    active: enabled && multiplier === activeMultiplier,
-    enabled
+    completed: steps >= APP_CONFIG.pathTotalSteps
   };
 }
 
-export function getActiveMultiplier(progress: FactProgress, enabledPaths: EnabledPathMap): number | null {
-  for (const multiplier of getEnabledMultipliers(enabledPaths)) {
-    const steps = Array.from({ length: APP_CONFIG.factsPerPath }, (_, index) =>
-      getFactStep(progress, createFactKey(multiplier, index + 1))
-    ).reduce((sum, step) => sum + step, 0);
-    if (steps < APP_CONFIG.pathTotalSteps) {
-      return multiplier;
-    }
-  }
-  return null;
-}
-
-export function getAllPathSummaries(progress: FactProgress, enabledPaths: EnabledPathMap): PathSummary[] {
-  const activeMultiplier = getActiveMultiplier(progress, enabledPaths);
-  return Array.from({ length: APP_CONFIG.pathCount }, (_, index) =>
-    getPathSummary(progress, index + 1, activeMultiplier, enabledPaths)
-  );
-}
-
-export function getOverallSteps(progress: FactProgress, enabledPaths: EnabledPathMap): number {
-  return getAllPathSummaries(progress, enabledPaths)
-    .filter((path) => path.enabled)
-    .reduce((sum, path) => sum + path.steps, 0);
+export function getAllPathSummaries(progress: FactProgress): PathSummary[] {
+  return Array.from({ length: APP_CONFIG.pathCount }, (_, index) => getPathSummary(progress, index + 1));
 }
 
 export function buildSessionQueue(progress: FactProgress, multiplier: number): SessionTask[] {
@@ -105,9 +63,6 @@ export function buildSessionQueue(progress: FactProgress, multiplier: number): S
 
   for (let right = 1; right <= APP_CONFIG.factsPerPath; right += 1) {
     const step = getFactStep(progress, createFactKey(multiplier, right));
-    if (step >= APP_CONFIG.stepsPerFact) {
-      continue;
-    }
     const task: SessionTask = {
       left: multiplier,
       right,
@@ -124,16 +79,6 @@ export function buildSessionQueue(progress: FactProgress, multiplier: number): S
   }
 
   return [...shuffle(review), ...shuffle(fresh)];
-}
-
-export function resetEnabledPathProgress(progress: FactProgress, enabledPaths: EnabledPathMap): FactProgress {
-  const next = { ...progress };
-  for (const multiplier of getEnabledMultipliers(enabledPaths)) {
-    for (let right = 1; right <= APP_CONFIG.factsPerPath; right += 1) {
-      next[createFactKey(multiplier, right)] = 0;
-    }
-  }
-  return next;
 }
 
 export function describeStep(step: number): string {
