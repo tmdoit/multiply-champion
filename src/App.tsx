@@ -281,7 +281,7 @@ export default function App() {
           <div className="titleRow">
             <div>
               <h1 className="homeTitle">Mistrz Mnożenia</h1>
-              <p className="homeSubtitle">Wybierz ścieżkę i zacznij trening.</p>
+              <p className="homeSubtitle">Wybierz, co chcesz teraz poćwiczyć.</p>
             </div>
             <button className="ghostButton small shareButton" onClick={() => void handleShare()}>
               Udostępnij
@@ -329,7 +329,7 @@ export default function App() {
             <article key={path.multiplier} className={`pathRow pathTone-${path.tone}`}>
               <div className="pathContent">
                 <div className="pathHeaderSimple">
-                  <p className="name">Mnożenie przez {path.multiplier}</p>
+                  <p className="name">×{path.multiplier}</p>
                   <button className="trainButton" onClick={() => startRun(path.multiplier)}>
                     Trenuj
                   </button>
@@ -360,7 +360,7 @@ export default function App() {
         <div className="hudCard compactHudCard">
           <div className="hudSummaryRow">
             <div className="hudMetric">
-              <span className="hudLabel">Mnożenie</span>
+              <span className="hudLabel">Tabliczka</span>
               <strong>×{game.pathMultiplier}</strong>
             </div>
             <div className="hudMetric">
@@ -428,7 +428,7 @@ export default function App() {
             <span>⭐</span>
           </div>
           <p className="eyebrow">Podsumowanie</p>
-          <h2>{lastResult.completedPath ? `Brawo! Mnożenie przez ${lastResult.pathMultiplier} ukończone!` : "Dobra robota!"}</h2>
+          <h2>{lastResult.completedPath ? `Brawo! ×${lastResult.pathMultiplier} ukończone!` : "Dobra robota!"}</h2>
           <p className="subtitle">
             Czas tej rundy: <strong>{formatMs(lastResult.totalTimeMs)}</strong>
           </p>
