@@ -1,26 +1,20 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { APP_CONFIG } from "./constants";
-import { loadChildName, loadProgress, saveChildName, saveProgress } from "./storage";
-import type { FactProgress, GameState, RunResult, Screen } from "./types";
-import { buildSessionQueue, describeStep, formatMs, getAllPathSummaries, getFactStep, getPathSummary, updateFactStep } from "./utils";
+import { loadProgress, saveProgress } from "./storage";
+import type { GameState, PathProgress, RunResult, Screen } from "./types";
+import { buildSessionQueue, formatMs, getAllPathSummaries } from "./utils";
 import "./styles.css";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("home");
-  const [childName, setChildName] = useState(() => loadChildName());
-  const [nameDraft, setNameDraft] = useState(() => loadChildName());
-  const [isEditingName, setIsEditingName] = useState(() => loadChildName().trim().length === 0);
-  const [progress, setProgress] = useState<FactProgress>(() => loadProgress());
+  const [progress, setProgress] = useState<PathProgress>(() => loadProgress());
   const [game, setGame] = useState<GameState | null>(null);
   const [lastResult, setLastResult] = useState<RunResult | null>(null);
-  const [popupMessage, setPopupMessage] = useState<string | null>(null);
   const timerRef = useRef<number | null>(null);
   const gameRef = useRef<GameState | null>(null);
-  const progressRef = useRef(progress);
 
   useEffect(() => {
     saveProgress(progress);
-    progressRef.current = progress;
   }, [progress]);
 
   useEffect(() => {
@@ -78,7 +72,7 @@ export default function App() {
       const nextQueue = current.pendingQueue ?? current.queue;
       const nextIndex = current.pendingIndex ?? current.currentIndex;
       if (nextIndex >= nextQueue.length) {
-        finishRun(current.pathMultiplier);
+        finishRun(current.pathMultiplier, current.solvedCount);
         return;
       }
       setGame({
@@ -101,23 +95,11 @@ export default function App() {
 
   const pathSummaries = useMemo(() => getAllPathSummaries(progress), [progress]);
   const currentTask = game ? game.queue[game.currentIndex] : null;
-  const currentTaskStep = currentTask ? getFactStep(progress, currentTask.key) : 0;
-
-  function handleSaveName(): void {
-    const trimmed = nameDraft.trim().slice(0, 20);
-    setChildName(trimmed);
-    saveChildName(trimmed);
-    setIsEditingName(trimmed.length === 0);
-    if (!trimmed) {
-      setPopupMessage("Możesz wpisać imię później.");
-    }
-  }
 
   function startRun(multiplier: number): void {
-    const queue = buildSessionQueue(progressRef.current, multiplier);
     setGame({
       pathMultiplier: multiplier,
-      queue,
+      queue: buildSessionQueue(multiplier),
       currentIndex: 0,
       input: "",
       feedback: null,
@@ -171,14 +153,10 @@ export default function App() {
     if (!current) {
       return;
     }
-    const task = current.queue[current.currentIndex];
-    const nextProgress = updateFactStep(progressRef.current, task.key, 1);
-    progressRef.current = nextProgress;
-    setProgress(nextProgress);
-
+    const nextSolvedCount = current.solvedCount + 1;
     const nextIndex = current.currentIndex + 1;
     if (nextIndex >= current.queue.length) {
-      finishRun(current.pathMultiplier);
+      finishRun(current.pathMultiplier, nextSolvedCount);
       return;
     }
 
@@ -188,7 +166,7 @@ export default function App() {
       input: "",
       feedback: {
         type: "correct",
-        text: getFactStep(nextProgress, task.key) >= APP_CONFIG.stepsPerFact ? "Opanowane!" : "Dobrze!"
+        text: "Dobrze!"
       },
       waitingForNext: false,
       pendingQueue: null,
@@ -196,7 +174,7 @@ export default function App() {
       feedbackDelayMs: APP_CONFIG.successFlashMs,
       taskStartedAt: Date.now(),
       remainingMs: APP_CONFIG.timerSecondsPerTask * 1000,
-      solvedCount: current.solvedCount + 1
+      solvedCount: nextSolvedCount
     });
   }
 
@@ -205,10 +183,6 @@ export default function App() {
     if (!current) {
       return;
     }
-    const task = current.queue[current.currentIndex];
-    const nextProgress = updateFactStep(progressRef.current, task.key, -1);
-    progressRef.current = nextProgress;
-    setProgress(nextProgress);
 
     setGame({
       ...current,
@@ -226,18 +200,18 @@ export default function App() {
     });
   }
 
-  function finishRun(pathMultiplier: number): void {
-    const summary = getPathSummary(progressRef.current, pathMultiplier);
+  function finishRun(pathMultiplier: number, score: number): void {
+    setProgress((current) => ({
+      ...current,
+      [pathMultiplier]: score
+    }));
 
     setLastResult({
-      childName: childName.trim() || null,
       pathMultiplier,
-      completedPath: summary.completed,
+      completedPath: score >= APP_CONFIG.factsPerPath,
       totalTimeMs: Date.now() - (gameRef.current?.startedAt ?? Date.now()),
-      steps: summary.steps,
-      totalSteps: summary.totalSteps,
-      masteredFacts: summary.masteredFacts,
-      totalFacts: summary.totalFacts
+      score,
+      totalTasks: APP_CONFIG.factsPerPath
     });
 
     setGame(null);
@@ -246,97 +220,24 @@ export default function App() {
 
   function renderHome(): JSX.Element {
     return (
-      <section className="screen homeScreen">
-        <div className="hero">
-          <h1 className="heroTitle">Mistrz Mnożenia</h1>
-          <p className="subtitle heroDescription">Wybierz ścieżkę, którą chcesz teraz trenować.</p>
-        </div>
-
-        <div className="card compactCard nameCard">
-          {childName && !isEditingName ? (
-            <div className="savedNameRow">
-              <div className="savedNameCopy">
-                <p className="rank">Twoje imię</p>
-                <p className="savedNameValue">{childName}</p>
-              </div>
-              <button
-                className="ghostButton small iconButton"
-                onClick={() => {
-                  setNameDraft(childName);
-                  setIsEditingName(true);
-                }}
-                aria-label="Edytuj imię"
-              >
-                ✎
-              </button>
-            </div>
-          ) : (
-            <div className="nameEditRow">
-              <label className="field nameField">
-                <span>Twoje imię</span>
-                <input
-                  value={nameDraft}
-                  onChange={(event) => setNameDraft(event.target.value.slice(0, 20))}
-                  placeholder="Np. Ania"
-                />
-              </label>
-              <div className="nameActions">
-                <button className="ghostButton small" onClick={handleSaveName}>
-                  Zapisz
-                </button>
-                {childName ? (
-                  <button
-                    className="ghostButton small"
-                    onClick={() => {
-                      setNameDraft(childName);
-                      setIsEditingName(false);
-                    }}
-                  >
-                    Anuluj
+      <section className="screen homeScreen compactHomeScreen">
+        <div className="pathList onlyPathsList">
+          {pathSummaries.map((path) => (
+            <article key={path.multiplier} className={`pathRow pathTone-${path.tone}`}>
+              <div className="pathContent">
+                <div className="pathHeaderSimple">
+                  <p className="name">Ścieżka {path.label}</p>
+                  <button className="trainButton" onClick={() => startRun(path.multiplier)}>
+                    Trenuj
                   </button>
-                ) : null}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="card stack">
-          <div className="sectionTitleRow">
-            <h2>Ścieżki</h2>
-            <p className="statusLine">Wybierz jedną ścieżkę do treningu.</p>
-          </div>
-          <div className="rulesCard">
-            <p className="name">Jak zaliczyć ścieżkę?</p>
-            <p className="statusLine">W ścieżce jest 10 działań.</p>
-            <p className="statusLine">Każde trzeba zrobić dobrze 3 razy.</p>
-            <p className="statusLine">Pomyłka cofa o 1 krok.</p>
-          </div>
-          <div className="pathList">
-            {pathSummaries.map((path) => (
-              <article key={path.multiplier} className={`pathRow ${path.completed ? "completed" : ""}`}>
-                <div className="pathContent">
-                  <div className="sectionTitleRow pathRowHeader">
-                    <p className="name">Ścieżka {path.label}</p>
-                    <div className="pathHeaderMeta">
-                      <p className="rank">{path.steps}/{path.totalSteps}</p>
-                      <button className="trainButton" onClick={() => startRun(path.multiplier)}>
-                        Trenuj
-                      </button>
-                    </div>
-                  </div>
-                  <div className="progressBar miniBar" aria-hidden="true">
-                    <span className="progressFill" style={{ width: `${Math.round((path.steps / path.totalSteps) * 100)}%` }} />
-                  </div>
-                  <p className="rank">Opanowane działania: {path.masteredFacts}/{path.totalFacts}</p>
-                  <p className="rank">
-                    {path.completed
-                      ? "Ta ścieżka jest opanowana. Możesz ćwiczyć ją dalej."
-                      : "Ta ścieżka jest w trakcie nauki."}
-                  </p>
                 </div>
-              </article>
-            ))}
-          </div>
+                <div className="progressBar miniBar" aria-hidden="true">
+                  <span className={`progressFill tone-${path.tone}`} style={{ width: `${Math.round((path.score / path.totalTasks) * 100)}%` }} />
+                </div>
+                <p className="rank pathScoreText">{path.score}/{path.totalTasks}</p>
+              </div>
+            </article>
+          ))}
         </div>
       </section>
     );
@@ -366,15 +267,6 @@ export default function App() {
             <div className="hudMetric timerMetric">
               <span className="hudLabel">Czas</span>
               <strong>{Math.ceil(game.remainingMs / 1000)}s</strong>
-            </div>
-          </div>
-          <div className="hudStatusRow">
-            <span className={`phasePill ${currentTask.phase === "review" ? "reviewPill" : "freshPill"}`}>
-              {currentTask.phase === "review" ? "Powtórka" : "Nowe"}
-            </span>
-            <div className="hudStateText">
-              <span>Stan: {currentTaskStep}/3</span>
-              <span>{describeStep(currentTaskStep)}</span>
             </div>
           </div>
         </div>
@@ -433,21 +325,13 @@ export default function App() {
             <span>⭐</span>
           </div>
           <p className="eyebrow">Podsumowanie</p>
-          <h2>
-            {lastResult.completedPath
-              ? `Brawo! Ścieżka ×${lastResult.pathMultiplier} ukończona!`
-              : `Dobra robota${lastResult.childName ? `, ${lastResult.childName}` : ""}!`}
-          </h2>
-          <p className="subtitle">Czas tej rundy: <strong>{formatMs(lastResult.totalTimeMs)}</strong></p>
-          <div className="focusSummary">
-            <p className="bigProgress">×{lastResult.pathMultiplier} • {lastResult.steps}/{lastResult.totalSteps}</p>
-            <p className="statusLine">Opanowane {lastResult.masteredFacts} z {lastResult.totalFacts} działań</p>
-          </div>
-          <p className="pathHelp">
-            {lastResult.completedPath
-              ? "Możesz ćwiczyć tę ścieżkę dalej albo wybrać inną."
-              : "Wróć do tej ścieżki albo wybierz inną do treningu."}
+          <h2>{lastResult.completedPath ? `Brawo! Ścieżka ×${lastResult.pathMultiplier} ukończona!` : "Dobra robota!"}</h2>
+          <p className="subtitle">
+            Czas tej rundy: <strong>{formatMs(lastResult.totalTimeMs)}</strong>
           </p>
+          <div className="focusSummary">
+            <p className="bigProgress">{lastResult.score}/{lastResult.totalTasks}</p>
+          </div>
           <button className="primaryButton" onClick={() => setScreen("home")}>
             Wróć do menu
           </button>
@@ -456,21 +340,5 @@ export default function App() {
     );
   }
 
-  return (
-    <main className="appShell">
-      {screen === "home" && renderHome()}
-      {screen === "game" && renderGame()}
-      {screen === "results" && renderResults()}
-      {popupMessage ? (
-        <div className="popupOverlay" role="dialog" aria-modal="true">
-          <div className="popupCard">
-            <p className="popupMessage">{popupMessage}</p>
-            <button className="primaryButton" onClick={() => setPopupMessage(null)}>
-              OK
-            </button>
-          </div>
-        </div>
-      ) : null}
-    </main>
-  );
+  return <main className="appShell">{screen === "home" ? renderHome() : screen === "game" ? renderGame() : renderResults()}</main>;
 }

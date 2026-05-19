@@ -1,5 +1,5 @@
 import { APP_CONFIG } from "./constants";
-import type { FactKey, FactProgress, PathSummary, SessionTask } from "./types";
+import type { FactKey, PathProgress, PathSummary, ProgressTone, SessionTask } from "./types";
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
@@ -18,80 +18,44 @@ export function formatMs(ms: number): string {
   return `${minutes}:${String(seconds).padStart(2, "0")}.${String(centiseconds).padStart(2, "0")}`;
 }
 
-export function getFactStep(progress: FactProgress, factKey: FactKey): number {
-  return clamp(progress[factKey] ?? 0, 0, APP_CONFIG.stepsPerFact);
-}
-
-export function updateFactStep(progress: FactProgress, factKey: FactKey, delta: number): FactProgress {
-  const nextStep = clamp(getFactStep(progress, factKey) + delta, 0, APP_CONFIG.stepsPerFact);
-  return {
-    ...progress,
-    [factKey]: nextStep
-  };
-}
-
-export function getPathSummary(progress: FactProgress, multiplier: number): PathSummary {
-  let steps = 0;
-  let masteredFacts = 0;
-
-  for (let right = 1; right <= APP_CONFIG.factsPerPath; right += 1) {
-    const step = getFactStep(progress, createFactKey(multiplier, right));
-    steps += step;
-    if (step >= APP_CONFIG.stepsPerFact) {
-      masteredFacts += 1;
-    }
+export function getProgressTone(score: number): ProgressTone {
+  if (score <= 3) {
+    return "low";
   }
+  if (score <= 7) {
+    return "mid";
+  }
+  return "high";
+}
 
+export function getPathSummary(progress: PathProgress, multiplier: number): PathSummary {
+  const score = clamp(progress[multiplier] ?? 0, 0, APP_CONFIG.factsPerPath);
   return {
     multiplier,
     label: `×${multiplier}`,
-    steps,
-    totalSteps: APP_CONFIG.pathTotalSteps,
-    masteredFacts,
-    totalFacts: APP_CONFIG.factsPerPath,
-    completed: steps >= APP_CONFIG.pathTotalSteps
+    score,
+    totalTasks: APP_CONFIG.factsPerPath,
+    completed: score >= APP_CONFIG.factsPerPath,
+    tone: getProgressTone(score)
   };
 }
 
-export function getAllPathSummaries(progress: FactProgress): PathSummary[] {
+export function getAllPathSummaries(progress: PathProgress): PathSummary[] {
   return Array.from({ length: APP_CONFIG.pathCount }, (_, index) => getPathSummary(progress, index + 1));
 }
 
-export function buildSessionQueue(progress: FactProgress, multiplier: number): SessionTask[] {
-  const review: SessionTask[] = [];
-  const fresh: SessionTask[] = [];
-
-  for (let right = 1; right <= APP_CONFIG.factsPerPath; right += 1) {
-    const step = getFactStep(progress, createFactKey(multiplier, right));
-    const task: SessionTask = {
+export function buildSessionQueue(multiplier: number): SessionTask[] {
+  const tasks = Array.from({ length: APP_CONFIG.factsPerPath }, (_, index) => {
+    const right = index + 1;
+    return {
       left: multiplier,
       right,
       answer: multiplier * right,
-      key: createFactKey(multiplier, right),
-      phase: step === 0 ? "new" : "review",
-      stepBefore: step
-    };
-    if (step === 0) {
-      fresh.push(task);
-    } else {
-      review.push(task);
-    }
-  }
+      key: createFactKey(multiplier, right)
+    } satisfies SessionTask;
+  });
 
-  return [...shuffle(review), ...shuffle(fresh)];
-}
-
-export function describeStep(step: number): string {
-  if (step <= 0) {
-    return "nie ruszona";
-  }
-  if (step === 1) {
-    return "zaczynam umieć";
-  }
-  if (step === 2) {
-    return "prawie umiem";
-  }
-  return "opanowana";
+  return shuffle(tasks);
 }
 
 function shuffle<T>(items: T[]): T[] {

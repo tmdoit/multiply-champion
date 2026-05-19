@@ -2,18 +2,17 @@ export type Screen = "home" | "game" | "results";
 
 export type FactKey = `${number}x${number}`;
 
-export type FactPhase = "review" | "new";
+export type PathProgress = Record<number, number>;
 
-export type FactProgress = Record<FactKey, number>;
+export type ProgressTone = "low" | "mid" | "high";
 
 export type PathSummary = {
   multiplier: number;
   label: string;
-  steps: number;
-  totalSteps: number;
-  masteredFacts: number;
-  totalFacts: number;
+  score: number;
+  totalTasks: number;
   completed: boolean;
+  tone: ProgressTone;
 };
 
 export type SessionTask = {
@@ -21,8 +20,6 @@ export type SessionTask = {
   right: number;
   answer: number;
   key: FactKey;
-  phase: FactPhase;
-  stepBefore: number;
 };
 
 export type GameState = {
@@ -43,12 +40,9 @@ export type GameState = {
 };
 
 export type RunResult = {
-  childName: string | null;
   pathMultiplier: number;
   completedPath: boolean;
   totalTimeMs: number;
-  steps: number;
-  totalSteps: number;
-  masteredFacts: number;
-  totalFacts: number;
+  score: number;
+  totalTasks: number;
 };

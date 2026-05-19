@@ -3,12 +3,9 @@ export const APP_CONFIG = {
   feedbackPauseMs: 1800,
   successFlashMs: 500,
   pathCount: 10,
-  factsPerPath: 10,
-  stepsPerFact: 3,
-  pathTotalSteps: 30
+  factsPerPath: 10
 } as const;
 
 export const STORAGE_KEYS = {
-  childName: "multiply.localChildName",
   progress: "multiply.localProgress"
 } as const;
