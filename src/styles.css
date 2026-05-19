@@ -291,15 +291,15 @@ body.gameLocked {
   font-weight: 900;
 }
 
-.tone-low {
+.progressFill.tone-low {
   background: linear-gradient(90deg, #ef6d68 0%, #d65252 100%);
 }
 
-.tone-mid {
+.progressFill.tone-mid {
   background: linear-gradient(90deg, #f3bf4d 0%, #e5a12e 100%);
 }
 
-.tone-high {
+.progressFill.tone-high {
   background: linear-gradient(90deg, #54c98d 0%, #1f9d68 100%);
 }
 
