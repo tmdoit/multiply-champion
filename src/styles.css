@@ -197,7 +197,65 @@ input {
 }
 
 .compactHomeScreen {
+  align-content: start;
   padding-top: 0.5rem;
+}
+
+.homeHeaderCard,
+.nameCard {
+  padding: 1rem 1.05rem;
+}
+
+.titleRow,
+.namePanelHeader,
+.nameEditor {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.titleRow {
+  align-items: flex-start;
+}
+
+.homeTitle {
+  margin: 0;
+  font-size: clamp(1.7rem, 6vw, 2.3rem);
+  line-height: 1.02;
+}
+
+.homeSubtitle,
+.savedName,
+.shareStatus {
+  margin: 0.25rem 0 0;
+  color: var(--soft-text);
+  font-weight: 700;
+}
+
+.savedName {
+  color: #16304a;
+  font-size: 1.15rem;
+  font-weight: 900;
+}
+
+.shareButton,
+.iconButton,
+.smallActionButton {
+  min-height: 2.45rem;
+}
+
+.iconButton {
+  min-width: 2.45rem;
+  padding: 0;
+}
+
+.smallActionButton {
+  padding: 0 1rem;
+}
+
+.nameEditor input {
+  min-width: 0;
 }
 
 .onlyPathsList {
@@ -595,4 +653,28 @@ input {
 @keyframes popFloat {
   from { transform: translateY(0) scale(1); }
   to { transform: translateY(-6px) scale(1.06); }
+}
+
+.feedback.neutral {
+  background: rgba(22, 48, 74, 0.08);
+  color: #4e5f73;
+}
+
+@media (max-width: 520px) {
+  .titleRow,
+  .namePanelHeader,
+  .nameEditor {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .shareButton,
+  .smallActionButton,
+  .iconButton {
+    width: 100%;
+  }
+
+  .iconButton {
+    width: 3rem;
+  }
 }

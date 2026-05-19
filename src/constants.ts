@@ -7,5 +7,6 @@ export const APP_CONFIG = {
 } as const;
 
 export const STORAGE_KEYS = {
-  progress: "multiply.localProgress"
+  progress: "multiply.localProgress",
+  childName: "multiply.childName"
 } as const;

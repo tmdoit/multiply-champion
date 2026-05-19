@@ -26,3 +26,15 @@ export function loadProgress(): PathProgress {
 export function saveProgress(progress: PathProgress): void {
   writeJson(STORAGE_KEYS.progress, progress);
 }
+
+export function loadChildName(): string {
+  try {
+    return localStorage.getItem(STORAGE_KEYS.childName)?.trim() ?? "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveChildName(name: string): void {
+  localStorage.setItem(STORAGE_KEYS.childName, name.trim());
+}
