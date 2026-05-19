@@ -4,7 +4,7 @@ export type FactKey = `${number}x${number}`;
 
 export type PathProgress = Record<number, number>;
 
-export type ProgressTone = "low" | "mid" | "high";
+export type ProgressTone = "low" | "high";
 
 export type PathSummary = {
   multiplier: number;

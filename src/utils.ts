@@ -19,13 +19,10 @@ export function formatMs(ms: number): string {
 }
 
 export function getProgressTone(score: number): ProgressTone {
-  if (score <= 3) {
-    return "low";
+  if (score >= APP_CONFIG.factsPerPath) {
+    return "high";
   }
-  if (score <= 7) {
-    return "mid";
-  }
-  return "high";
+  return "low";
 }
 
 export function getPathSummary(progress: PathProgress, multiplier: number): PathSummary {
