@@ -24,12 +24,16 @@
 html,
 body,
 #root {
+  height: 100%;
   min-height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 body {
   min-height: 100vh;
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: auto;
   background:
     radial-gradient(circle at top left, rgba(255, 214, 145, 0.85), transparent 24%),
     radial-gradient(circle at bottom right, rgba(255, 160, 117, 0.5), transparent 28%),
@@ -58,12 +62,16 @@ input {
 
 .appShell {
   width: min(100%, 36rem);
+  height: 100svh;
+  min-height: 100svh;
   margin: 0 auto;
   padding: 1rem;
+  overflow: hidden;
 }
 
 .screen {
-  min-height: 100vh;
+  height: 100%;
+  min-height: 0;
   display: grid;
   align-content: center;
   gap: 1rem;
@@ -72,6 +80,14 @@ input {
 
 .gameScreen {
   align-content: start;
+}
+
+body.gameLocked {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  overflow: hidden;
+  touch-action: none;
 }
 
 
@@ -199,6 +215,7 @@ input {
 .compactHomeScreen {
   align-content: start;
   padding-top: 0.5rem;
+  overflow: auto;
 }
 
 .homeHeaderCard,

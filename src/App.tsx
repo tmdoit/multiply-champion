@@ -27,6 +27,11 @@ export default function App() {
   }, [game]);
 
   useEffect(() => {
+    document.body.classList.toggle("gameLocked", screen === "game");
+    return () => document.body.classList.remove("gameLocked");
+  }, [screen]);
+
+  useEffect(() => {
     return () => {
       if (shareStatusRef.current) {
         window.clearTimeout(shareStatusRef.current);
@@ -146,7 +151,7 @@ export default function App() {
     const trimmed = nameDraft.trim();
     setChildName(trimmed);
     saveChildName(trimmed);
-    setEditingName(false)
+    setEditingName(false);
   }
 
   function startRun(multiplier: number): void {
