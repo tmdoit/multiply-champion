@@ -329,7 +329,7 @@ export default function App() {
             <article key={path.multiplier} className={`pathRow pathTone-${path.tone}`}>
               <div className="pathContent">
                 <div className="pathHeaderSimple">
-                  <p className="name">Ścieżka {path.label}</p>
+                  <p className="name">Mnożenie przez {path.multiplier}</p>
                   <button className="trainButton" onClick={() => startRun(path.multiplier)}>
                     Trenuj
                   </button>
@@ -360,7 +360,7 @@ export default function App() {
         <div className="hudCard compactHudCard">
           <div className="hudSummaryRow">
             <div className="hudMetric">
-              <span className="hudLabel">Ścieżka</span>
+              <span className="hudLabel">Mnożenie</span>
               <strong>×{game.pathMultiplier}</strong>
             </div>
             <div className="hudMetric">
@@ -428,7 +428,7 @@ export default function App() {
             <span>⭐</span>
           </div>
           <p className="eyebrow">Podsumowanie</p>
-          <h2>{lastResult.completedPath ? `Brawo! Ścieżka ×${lastResult.pathMultiplier} ukończona!` : "Dobra robota!"}</h2>
+          <h2>{lastResult.completedPath ? `Brawo! Mnożenie przez ${lastResult.pathMultiplier} ukończone!` : "Dobra robota!"}</h2>
           <p className="subtitle">
             Czas tej rundy: <strong>{formatMs(lastResult.totalTimeMs)}</strong>
           </p>
