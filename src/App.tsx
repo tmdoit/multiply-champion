@@ -124,8 +124,6 @@ export default function App() {
 
   async function handleShare(): Promise<void> {
     const shareData = {
-      title: "Mistrz Mnożenia",
-      text: "Spróbuj tej aplikacji do nauki tabliczki mnożenia",
       url: window.location.href
     };
 
