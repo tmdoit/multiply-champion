@@ -76,10 +76,13 @@ input {
 
 
 .compactGameScreen {
+  height: calc(100svh - 2rem);
   min-height: calc(100svh - 2rem);
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: 0.5rem;
   padding-top: 0.2rem;
   padding-bottom: 0.6rem;
+  overflow: hidden;
 }
 
 .gameTopBar {
@@ -133,6 +136,11 @@ input {
   border-radius: 28px;
   box-shadow: 0 18px 55px rgba(81, 67, 37, 0.12);
   padding: 1.2rem;
+}
+
+.compactProblemCard {
+  display: grid;
+  align-content: center;
 }
 
 .stack {
@@ -218,8 +226,8 @@ input {
 }
 
 .large {
-  min-height: 3.45rem;
-  font-size: 1.12rem;
+  min-height: 3.3rem;
+  font-size: 1.05rem;
 }
 
 .nameCard {
@@ -523,6 +531,7 @@ input {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.4rem;
+  align-self: end;
 }
 
 .key {
